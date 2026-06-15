@@ -1,0 +1,355 @@
+/* src/components/VideoPlayer.module.css */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 20px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 12px;
+}
+
+.title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--gradient-primary);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.videoWrapper {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: #000;
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-color);
+}
+
+.video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.downloadGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.downloadCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-normal);
+  position: relative;
+  overflow: hidden;
+}
+
+.downloadCard::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+.downloadCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-purple-active);
+  box-shadow: var(--shadow-md), var(--glow-purple);
+  background: var(--bg-card-hover);
+}
+
+.cardLeft {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  overflow: hidden;
+}
+
+.iconContainer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--border-radius);
+  transition: transform var(--transition-normal);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.downloadCard:hover .iconContainer {
+  transform: scale(1.08);
+}
+
+.iconVideo {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-purple);
+  border-color: rgba(139, 92, 246, 0.25);
+}
+
+.iconThumbnail {
+  background: rgba(6, 182, 212, 0.15);
+  color: var(--accent-cyan);
+  border-color: rgba(6, 182, 212, 0.25);
+}
+
+.fileLabel {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.fileName {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.downloadButton {
+  background: var(--gradient-primary);
+  color: #ffffff !important;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  transition: all var(--transition-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  border: none;
+}
+
+.downloadButton:hover {
+  transform: scale(1.1);
+  box-shadow: var(--glow-purple-strong);
+}
+
+.iconBible {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+/* Custom HTML5 Video Player */
+.videoContainer {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.customVideoControls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.4) 70%, transparent 100%);
+  padding: 20px 15px 12px 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity var(--transition-normal);
+}
+
+.videoWrapper:hover .customVideoControls {
+  opacity: 1;
+}
+
+.progressContainer {
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.videoRange {
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  transition: height 0.15s ease;
+}
+
+.videoRange:hover {
+  height: 7px;
+}
+
+.videoRange::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--accent-purple);
+  box-shadow: 0 0 10px var(--accent-purple);
+  cursor: pointer;
+}
+
+.controlsRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.controlsLeft, .controlsRight {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.controlBtn {
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.controlBtn:hover {
+  color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+.playPauseBtn {
+  background: var(--gradient-primary);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.playPauseBtn:hover {
+  box-shadow: var(--glow-purple-strong);
+}
+
+.videoTime {
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: var(--text-secondary);
+}
+
+.volumeContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.volumeSlider {
+  width: 60px;
+  height: 4px;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  outline: none;
+}
+
+.volumeSlider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent-cyan);
+}
+
+.speedMenu {
+  position: relative;
+}
+
+.speedDropdown {
+  position: absolute;
+  bottom: 35px;
+  right: 0;
+  background: rgba(15, 13, 26, 0.95);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  backdrop-filter: blur(12px);
+  padding: 6px 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 80px;
+  z-index: 10;
+  box-shadow: var(--shadow-lg);
+}
+
+.speedOption {
+  padding: 6px 12px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-align: left;
+  transition: all var(--transition-fast);
+}
+
+.speedOption:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+.speedOptionActive {
+  color: var(--accent-cyan);
+  font-weight: 700;
+}
+
+/* Custom Overlay Subtitles */
+.captionsOverlay {
+  position: absolute;
+  bottom: 80px;
+  left: 5%;
+  right: 5%;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.captionText {
+  background: rgba(0, 0, 0, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(4px);
+  padding: 8px 18px;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 1.05rem;
+  font-weight: 600;
+  text-align: center;
+  line-height: 1.4;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  max-width: 90%;
+  white-space: pre-wrap;
+  transition: all 0.15s ease;
+}
+

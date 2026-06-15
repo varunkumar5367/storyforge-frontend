@@ -1,0 +1,252 @@
+/* src/components/JobList.module.css */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.refreshButton {
+  color: var(--text-secondary);
+  padding: 6px;
+  border-radius: 6px;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.refreshButton:hover {
+  color: var(--accent-purple);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.jobScrollArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.emptyState {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.emptyIcon {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+.jobCard {
+  width: 100%;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+}
+
+.activeJob {
+  border-color: var(--accent-purple);
+  background: rgba(139, 92, 246, 0.06);
+  box-shadow: var(--glow-purple);
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.filename {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 150px;
+}
+
+.date {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.02em;
+}
+
+.badgePending {
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--text-secondary);
+  border: 1px solid rgba(100, 116, 139, 0.3);
+}
+
+.badgeProcessing {
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--accent-purple);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+}
+
+.badgeCompleted {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--accent-green);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.badgeFailed {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--accent-red);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.cardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.progressContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.progressBarTrack {
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  background: var(--gradient-primary);
+  transition: width 0.4s ease;
+}
+
+.progressBarFillCompleted {
+  background: var(--accent-green);
+}
+
+.progressBarFillFailed {
+  background: var(--accent-red);
+}
+
+.progressText {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  min-width: 28px;
+  text-align: right;
+}
+
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.deleteButton {
+  color: var(--text-muted);
+  opacity: 0;
+  padding: 4px;
+  border-radius: 4px;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.jobCard:hover .deleteButton {
+  opacity: 0.6;
+}
+
+.deleteButton:hover {
+  opacity: 1 !important;
+  color: var(--accent-red) !important;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+.editButton {
+  color: var(--text-muted);
+  opacity: 0;
+  padding: 4px;
+  border-radius: 4px;
+  transition: var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.jobCard:hover .editButton {
+  opacity: 0.6;
+}
+
+.editButtonActive {
+  opacity: 1 !important;
+  color: var(--accent-green) !important;
+  background: rgba(16, 185, 129, 0.1) !important;
+}
+
+.editButton:hover {
+  opacity: 1 !important;
+  color: var(--accent-purple) !important;
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.renameInput {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--accent-purple);
+  border-radius: 6px;
+  padding: 3px 6px;
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  outline: none;
+  width: 100%;
+  max-width: 140px;
+  box-shadow: var(--glow-purple);
+  transition: var(--transition-fast);
+}
+
+.renameInput:focus {
+  border-color: var(--accent-purple);
+  background: rgba(0, 0, 0, 0.5);
+  box-shadow: var(--glow-purple-strong);
+}
+
