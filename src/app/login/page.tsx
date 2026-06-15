@@ -8,7 +8,7 @@ import { login } from '@/utils/api';
 import { useTheme } from '@/hooks/useTheme';
 
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+const LOCKOUT_DURATION_MS = 1 * 60 * 1000; // 1 minute
 
 function ThemeToggleBtn() {
   const { theme, toggleTheme } = useTheme();
@@ -137,7 +137,7 @@ export default function LoginPage() {
         localStorage.setItem('storyforge_lockout_until', (Date.now() + LOCKOUT_DURATION_MS).toString());
         localStorage.removeItem('storyforge_fail_count');
         setIsLocked(true);
-        setError('Too many failed attempts. Please try again in 30:00.');
+        setError('Too many failed attempts. Please try again in 01:00.');
       } else {
         // Classify error type
         if (err instanceof TypeError) {
@@ -350,6 +350,10 @@ export default function LoginPage() {
           <Link href="/register" style={{ color: 'var(--accent-purple)', fontWeight: 600, textDecoration: 'none' }}>
             Register here
           </Link>
+          <div style={{ marginTop: '16px', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-secondary)' }}>
+            <strong>Demo Admin Credentials:</strong><br />
+            Username: <code style={{ color: 'var(--accent-purple)' }}>varun5367</code> | Password: <code style={{ color: 'var(--accent-purple)' }}>Varun@5367</code>
+          </div>
         </div>
       </div>
     </div>
