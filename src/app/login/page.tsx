@@ -55,7 +55,7 @@ function ThemeToggleBtn() {
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState('xyz123');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
@@ -350,10 +350,6 @@ export default function LoginPage() {
           <Link href="/register" style={{ color: 'var(--accent-purple)', fontWeight: 600, textDecoration: 'none' }}>
             Register here
           </Link>
-          <div style={{ marginTop: '16px', padding: '10px 12px', borderRadius: '8px', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-color)', fontSize: '13px', color: 'var(--text-secondary)' }}>
-            <strong>Demo Admin Credentials:</strong><br />
-            Username: <code style={{ color: 'var(--accent-purple)' }}>varun5367</code> | Password: <code style={{ color: 'var(--accent-purple)' }}>Varun@5367</code>
-          </div>
         </div>
       </div>
     </div>
