@@ -59,13 +59,25 @@ export interface JobOutputLinks {
 const BASE_URL_DYNAMIC = {
   toString() {
     if (typeof window !== 'undefined') {
-      return localStorage.getItem('storyforge_api_url') || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      const stored = localStorage.getItem('storyforge_api_url');
+      if (stored === 'http://127.0.0.1:8000' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+        localStorage.removeItem('storyforge_api_url');
+        return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      }
+      return stored || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     }
     return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
   },
   replace(searchValue: string | RegExp, replaceValue: string | ((substring: string, ...args: any[]) => string)) {
     const url = typeof window !== 'undefined'
-      ? localStorage.getItem('storyforge_api_url') || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000'
+      ? (() => {
+          const stored = localStorage.getItem('storyforge_api_url');
+          if (stored === 'http://127.0.0.1:8000' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+            localStorage.removeItem('storyforge_api_url');
+            return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+          }
+          return stored || process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+        })()
       : process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
     // @ts-ignore
     return url.replace(searchValue, replaceValue);
