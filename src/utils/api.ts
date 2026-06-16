@@ -219,6 +219,77 @@ export async function fetchAdminLogs(): Promise<{ success: boolean; logs: string
   return response.json();
 }
 
+export interface SystemAnalytics {
+  renders: {
+    completed: number;
+    failed: number;
+    avg_duration: number;
+    avg_steps: {
+      analyzing: number;
+      generating_images: number;
+      generating_voice: number;
+      generating_subtitles: number;
+      composing_video: number;
+      generating_metadata: number;
+      generating_thumbnail: number;
+    };
+    max_memory: number;
+    avg_memory: number;
+    recent: Array<{
+      id: string;
+      job_id: string;
+      username: string | null;
+      total_duration: number;
+      peak_memory_mb: number;
+      status: string;
+      created_at: string;
+    }>;
+  };
+  failures: Array<{
+    id: string;
+    job_id: string;
+    username: string | null;
+    total_duration: number;
+    status: string;
+    error_message: string;
+    ffmpeg_cmd: string | null;
+    ffmpeg_stderr: string | null;
+    created_at: string;
+  }>;
+  users: {
+    total_registered: number;
+    active_24h: number;
+    active_30d: number;
+    conversion_rate: number;
+  };
+  credits: {
+    total_held: number;
+    total_consumed: number;
+    total_requested: number;
+    total_approved: number;
+    total_denied: number;
+    by_user: Array<{
+      username: string;
+      consumed: number;
+    }>;
+  };
+}
+
+/**
+ * Retrieve system analytics (Admin only)
+ */
+export async function fetchAdminAnalytics(): Promise<SystemAnalytics> {
+  const response = await fetch(`${BASE_URL}/api/admin/analytics`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to fetch system analytics.');
+  }
+  return response.json();
+}
+
+
 /**
  * Normalizes an output asset path returned from the server into a fully-qualified static URL
  */

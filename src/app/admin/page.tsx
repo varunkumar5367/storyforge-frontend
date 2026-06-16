@@ -15,18 +15,21 @@ import {
   toggleUserActive,
   getAllPollenRequests,
   reviewPollenRequest,
-  PollenRequest
+  PollenRequest,
+  fetchAdminAnalytics,
+  SystemAnalytics
 } from '@/utils/api';
 
 export default function AdminPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'logs'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'analytics'>('users');
   
   // Data states
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const [allRequests, setAllRequests] = useState<PollenRequest[]>([]);
+  const [analytics, setAnalytics] = useState<SystemAnalytics | null>(null);
   
   // Loading & error states
   const [loading, setLoading] = useState(true);
@@ -41,6 +44,7 @@ export default function AdminPage() {
   const [expandedUserJobs, setExpandedUserJobs] = useState<JobSummary[]>([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [editPollenVal, setEditPollenVal] = useState<string>('');
+  const [expandedFailureIds, setExpandedFailureIds] = useState<string[]>([]);
   
   const logEndRef = useRef<HTMLDivElement>(null);
 
@@ -81,14 +85,16 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [usersData, logsData, requestsData] = await Promise.all([
+      const [usersData, logsData, requestsData, analyticsData] = await Promise.all([
         fetchAdminUsers(),
         fetchAdminLogs().catch(() => ({ success: true, logs: ['[Logs not available or empty]'] })),
-        getAllPollenRequests().catch(() => ({ success: true, requests: [] }))
+        getAllPollenRequests().catch(() => ({ success: true, requests: [] })),
+        fetchAdminAnalytics().catch(() => null)
       ]);
       setUsers(usersData);
       setLogs(logsData.logs || []);
       setAllRequests(requestsData.requests || []);
+      setAnalytics(analyticsData);
     } catch (err: any) {
       setError(err.message || 'Failed to load admin dashboard data.');
     } finally {
@@ -115,6 +121,9 @@ export default function AdminPage() {
         if (activeTab === 'logs') {
           const logsData = await fetchAdminLogs();
           setLogs(logsData.logs || []);
+        } else if (activeTab === 'analytics') {
+          const analyticsData = await fetchAdminAnalytics().catch(() => null);
+          setAnalytics(analyticsData);
         }
         
         // Quietly refresh users to catch activity heartbeat updates
@@ -126,6 +135,7 @@ export default function AdminPage() {
     }, 10000);
     return () => clearInterval(interval);
   }, [authorized, activeTab]);
+
 
   const handleDeleteUser = async (userId: string, username: string) => {
     if (!confirm(`Are you sure you want to delete user "${username}"?`)) return;
@@ -226,6 +236,14 @@ export default function AdminPage() {
     }
   };
 
+  const toggleFailureExpand = (id: string) => {
+    if (expandedFailureIds.includes(id)) {
+      setExpandedFailureIds(expandedFailureIds.filter(x => x !== id));
+    } else {
+      setExpandedFailureIds([...expandedFailureIds, id]);
+    }
+  };
+
   const isOnline = (lastSeenStr?: string) => {
     if (!lastSeenStr) return false;
     try {
@@ -318,7 +336,7 @@ export default function AdminPage() {
         marginBottom: '32px',
         gap: '24px'
       }}>
-        {(['users', 'logs'] as const).map((tab) => (
+        {(['users', 'logs', 'analytics'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -336,7 +354,7 @@ export default function AdminPage() {
               outline: 'none',
             }}
           >
-            {tab === 'users' ? 'User Accounts' : 'System Logs'}
+            {tab === 'users' ? 'User Accounts' : tab === 'logs' ? 'System Logs' : 'System Analytics'}
           </button>
         ))}
       </div>
@@ -835,6 +853,450 @@ export default function AdminPage() {
             )}
             <div ref={logEndRef} />
           </div>
+        </div>
+      )}
+
+      {!loading && activeTab === 'analytics' && (
+        <div>
+          {!analytics ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+              No analytics data available. Ensure the backend server is online and database tables are populated.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+              
+              {/* 1. KPI Cards Grid */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(250px, 1fr))',
+                gap: '20px'
+              }}>
+                {/* Render Stats Card */}
+                <div className="glass" style={{ padding: '20px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>Video Renders</h3>
+                    <span style={{ fontSize: '24px' }}>🎬</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Completed:</span>
+                      <strong style={{ color: 'var(--accent-green)' }}>{analytics.renders.completed}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Failed:</span>
+                      <strong style={{ color: 'var(--accent-red)' }}>{analytics.renders.failed}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px', marginTop: '4px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Avg. Duration:</span>
+                      <strong style={{ color: '#ffffff' }}>{analytics.renders.avg_duration}s</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Memory Load Card */}
+                <div className="glass" style={{ padding: '20px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>Memory Load</h3>
+                    <span style={{ fontSize: '24px' }}>💾</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Peak Memory:</span>
+                      <strong style={{ color: 'var(--accent-purple)' }}>{analytics.renders.max_memory} MB</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Avg. Memory:</span>
+                      <strong style={{ color: '#ffffff' }}>{analytics.renders.avg_memory} MB</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px', marginTop: '4px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Server Platform:</span>
+                      <strong style={{ color: '#ffffff', fontSize: '12px', fontFamily: 'monospace' }}>Linux (Render)</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* User Activity & Conversion Card */}
+                <div className="glass" style={{ padding: '20px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>User Engagement</h3>
+                    <span style={{ fontSize: '24px' }}>👥</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Conversion Rate:</span>
+                      <strong style={{ color: 'var(--accent-orange)' }}>{analytics.users.conversion_rate}%</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Active (24h / 30d):</span>
+                      <strong style={{ color: '#ffffff' }}>{analytics.users.active_24h} / {analytics.users.active_30d}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px', marginTop: '4px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Total Registered:</span>
+                      <strong style={{ color: '#ffffff' }}>{analytics.users.total_registered} users</strong>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Credit Consumption Card */}
+                <div className="glass" style={{ padding: '20px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '15px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>Pollen Credits</h3>
+                    <span style={{ fontSize: '24px' }}>🪙</span>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Total Consumed:</span>
+                      <strong style={{ color: 'var(--accent-purple)' }}>{analytics.credits.total_consumed.toFixed(1)}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Total Held (Users):</span>
+                      <strong style={{ color: '#ffffff' }}>{analytics.credits.total_held.toFixed(1)}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: '8px', marginTop: '4px' }}>
+                      <span style={{ color: 'var(--text-secondary)' }}>Req (Appr / Deny):</span>
+                      <strong style={{ color: '#ffffff' }}>{analytics.credits.total_requested.toFixed(0)} ({analytics.credits.total_approved.toFixed(0)} / {analytics.credits.total_denied.toFixed(0)})</strong>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Middle Columns (Durations Breakdown & Credit Users / Recent Renders) */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: isMobile ? '1fr' : '1.1fr 1.2fr',
+                gap: '32px'
+              }}>
+                {/* Left Side: Step Durations & Credit Consumers */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+                  {/* Step Durations Breakdown */}
+                  <div className="glass" style={{ padding: '24px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)' }}>
+                    <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Average Step Duration Breakdown
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                      {Object.entries(analytics.renders.avg_steps).map(([step, val]) => {
+                        const stepNames: Record<string, string> = {
+                          analyzing: 'Story Analysis',
+                          generating_images: 'Image Generation',
+                          generating_voice: 'Voice Narration',
+                          generating_subtitles: 'Subtitle Transcription',
+                          composing_video: 'FFmpeg Video Composition',
+                          generating_metadata: 'YouTube Metadata Gen',
+                          generating_thumbnail: 'Thumbnail Creation'
+                        };
+                        const totalAvg = Object.values(analytics.renders.avg_steps).reduce((a, b) => a + b, 0) || 1.0;
+                        const pct = Math.min(100, Math.round((val / totalAvg) * 100));
+
+                        return (
+                          <div key={step} style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                              <span style={{ color: 'var(--text-secondary)', fontWeight: 500 }}>{stepNames[step] || step}</span>
+                              <strong style={{ color: '#ffffff' }}>{val.toFixed(2)}s ({pct}%)</strong>
+                            </div>
+                            <div style={{ width: '100%', height: '6px', borderRadius: '3px', backgroundColor: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                              <div style={{
+                                width: `${pct}%`,
+                                height: '100%',
+                                borderRadius: '3px',
+                                backgroundColor: step === 'composing_video' ? 'var(--accent-purple)' : 'rgba(139, 92, 246, 0.55)',
+                                transition: 'width 0.8s ease-out'
+                              }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Top Credit Consumers */}
+                  <div className="glass" style={{ padding: '24px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)' }}>
+                    <h3 style={{ margin: '0 0 16px', fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      Top Credit Consumers
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {analytics.credits.by_user.map((u, idx) => (
+                        <div key={u.username} style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 14px',
+                          borderRadius: '8px',
+                          backgroundColor: 'rgba(255,255,255,0.02)',
+                          border: '1px solid rgba(255,255,255,0.03)'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{
+                              width: '24px',
+                              height: '24px',
+                              borderRadius: '50%',
+                              backgroundColor: idx === 0 ? 'var(--accent-purple)' : 'rgba(255,255,255,0.05)',
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '11px',
+                              fontWeight: 700
+                            }}>
+                              #{idx + 1}
+                            </span>
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{u.username}</span>
+                          </div>
+                          <span style={{ fontWeight: 700, color: 'var(--accent-orange)' }}>
+                            {u.consumed.toFixed(1)} Credits
+                          </span>
+                        </div>
+                      ))}
+                      {analytics.credits.by_user.length === 0 && (
+                        <p style={{ color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic', margin: 0 }}>No credits consumed yet.</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Side: Recent Render Runs */}
+                <div className="glass" style={{ padding: '24px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column' }}>
+                  <h3 style={{ margin: '0 0 20px', fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Recent Render Runs (Last 10)
+                  </h3>
+                  <div style={{ overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid var(--border-color)', paddingBottom: '8px' }}>
+                          <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Job ID</th>
+                          <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>User</th>
+                          <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Duration</th>
+                          <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Memory</th>
+                          <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'right' }}>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analytics.renders.recent.map((r) => (
+                          <tr key={r.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                            <td style={{ padding: '12px 12px', fontFamily: 'monospace' }}>
+                              <a href={`/studio?job_id=${r.job_id}`} style={{ color: 'var(--accent-purple)', textDecoration: 'none', fontWeight: 600 }}>
+                                {r.job_id.slice(0, 8)}...
+                              </a>
+                            </td>
+                            <td style={{ padding: '12px 12px', color: 'var(--text-primary)' }}>{r.username || '—'}</td>
+                            <td style={{ padding: '12px 12px', color: 'var(--text-secondary)' }}>{r.total_duration.toFixed(1)}s</td>
+                            <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{r.peak_memory_mb > 0 ? `${r.peak_memory_mb.toFixed(0)}MB` : '—'}</td>
+                            <td style={{ padding: '12px 12px', textAlign: 'right' }}>
+                              <span style={{
+                                padding: '2px 6px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 700,
+                                textTransform: 'uppercase',
+                                ...getBadgeClass(r.status)
+                              }}>
+                                {r.status}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                        {analytics.renders.recent.length === 0 && (
+                          <tr>
+                            <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                              No render runs recorded yet.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. FFmpeg Failures & Error Logs */}
+              <div className="glass" style={{ padding: '24px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)' }}>
+                <h3 style={{ margin: '0 0 8px', fontSize: '16px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                  FFmpeg Failure Analytics & Diagnostics
+                </h3>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 20px' }}>
+                  Review failures, failed commands, and tail logs to resolve issues like OOMs, codec incompatibilities, or bad assets.
+                </p>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  {analytics.failures.map((f) => {
+                    const isExpanded = expandedFailureIds.includes(f.id);
+                    return (
+                      <div key={f.id} style={{
+                        borderRadius: '8px',
+                        border: '1px solid var(--border-color)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.02)',
+                        overflow: 'hidden'
+                      }}>
+                        <div 
+                          onClick={() => toggleFailureExpand(f.id)}
+                          style={{
+                            padding: '16px 20px',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            backgroundColor: 'rgba(239, 68, 68, 0.03)',
+                            userSelect: 'none'
+                          }}
+                        >
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center' }}>
+                            <span style={{
+                              color: 'var(--accent-red)',
+                              fontWeight: 700,
+                              fontSize: '13px',
+                              backgroundColor: 'rgba(239,68,68,0.15)',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              textTransform: 'uppercase'
+                            }}>
+                              Exit -9 / OOM / Fail
+                            </span>
+                            <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>
+                              Job: <span style={{ fontFamily: 'monospace' }}>{f.job_id}</span>
+                            </span>
+                            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                              User: <strong>{f.username || '—'}</strong>
+                            </span>
+                            <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                              {new Date(f.created_at).toLocaleString()}
+                            </span>
+                          </div>
+                          <span style={{
+                            transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                            transition: 'transform 0.2s',
+                            fontSize: '14px',
+                            color: 'var(--text-secondary)'
+                          }}>
+                            ▼
+                          </span>
+                        </div>
+                        
+                        {isExpanded && (
+                          <div style={{ padding: '20px', borderTop: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div>
+                              <strong style={{ display: 'block', fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '6px', textTransform: 'uppercase' }}>
+                                Error Message
+                              </strong>
+                              <p style={{
+                                margin: 0,
+                                fontSize: '14px',
+                                color: '#ffffff',
+                                whiteSpace: 'pre-wrap',
+                                backgroundColor: 'rgba(0,0,0,0.2)',
+                                padding: '12px',
+                                borderRadius: '6px',
+                                border: '1px solid rgba(255,255,255,0.05)'
+                              }}>
+                                {f.error_message}
+                              </p>
+                            </div>
+
+                            {f.ffmpeg_cmd && (
+                              <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                  <strong style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                                    FFmpeg Command executed
+                                  </strong>
+                                  <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(f.ffmpeg_cmd || '');
+                                      alert('Command copied to clipboard!');
+                                    }}
+                                    style={{
+                                      padding: '2px 8px',
+                                      fontSize: '11px',
+                                      borderRadius: '4px',
+                                      backgroundColor: 'rgba(255,255,255,0.05)',
+                                      border: '1px solid var(--border-color)',
+                                      color: 'var(--text-primary)',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Copy Command
+                                  </button>
+                                </div>
+                                <code style={{
+                                  display: 'block',
+                                  fontSize: '12px',
+                                  color: 'var(--accent-purple)',
+                                  backgroundColor: '#050508',
+                                  padding: '12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(255,255,255,0.05)',
+                                  overflowX: 'auto',
+                                  whiteSpace: 'pre-wrap',
+                                  wordBreak: 'break-all',
+                                  fontFamily: 'monospace'
+                                }}>
+                                  {f.ffmpeg_cmd}
+                                </code>
+                              </div>
+                            )}
+
+                            {f.ffmpeg_stderr && (
+                              <div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                                  <strong style={{ fontSize: '13px', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>
+                                    FFmpeg Stderr tail log
+                                  </strong>
+                                  <button 
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(f.ffmpeg_stderr || '');
+                                      alert('Stderr log copied to clipboard!');
+                                    }}
+                                    style={{
+                                      padding: '2px 8px',
+                                      fontSize: '11px',
+                                      borderRadius: '4px',
+                                      backgroundColor: 'rgba(255,255,255,0.05)',
+                                      border: '1px solid var(--border-color)',
+                                      color: 'var(--text-primary)',
+                                      cursor: 'pointer'
+                                    }}
+                                  >
+                                    Copy Stderr
+                                  </button>
+                                </div>
+                                <pre style={{
+                                  margin: 0,
+                                  fontSize: '12px',
+                                  color: '#f87171',
+                                  backgroundColor: '#070202',
+                                  padding: '12px',
+                                  borderRadius: '6px',
+                                  border: '1px solid rgba(239, 68, 68, 0.1)',
+                                  overflowX: 'auto',
+                                  maxHeight: '300px',
+                                  overflowY: 'auto',
+                                  fontFamily: 'monospace',
+                                  whiteSpace: 'pre-wrap'
+                                }}>
+                                  {f.ffmpeg_stderr}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {analytics.failures.length === 0 && (
+                    <div style={{
+                      padding: '32px',
+                      borderRadius: '8px',
+                      border: '1px dashed var(--border-color)',
+                      textAlign: 'center',
+                      color: 'var(--text-muted)',
+                      fontSize: '14px',
+                      fontStyle: 'italic'
+                    }}>
+                      🎉 Huzzah! No FFmpeg errors or rendering failures recorded in the database.
+                    </div>
+                  )}
+                </div>
+              </div>
+
+            </div>
+          )}
         </div>
       )}
     </div>
