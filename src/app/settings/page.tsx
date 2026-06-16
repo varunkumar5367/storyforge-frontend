@@ -173,29 +173,54 @@ export default function SettingsPage() {
             {/* TTS Voice */}
             <div className={styles.formGroup}>
               <label className={styles.label}>Default TTS Narration Voice</label>
-              <select
-                value={defaultVoice}
-                onChange={(e) => setDefaultVoice(e.target.value)}
-                className={styles.select}
-              >
-                {VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
-              </select>
+              {isAdmin ? (
+                <select
+                  value={defaultVoice}
+                  onChange={(e) => setDefaultVoice(e.target.value)}
+                  className={styles.select}
+                >
+                  {VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+                </select>
+              ) : (
+                <div className={styles.readOnlyField}>
+                  <span className={styles.readOnlyValue}>
+                    {VOICES.find(v => v.id === defaultVoice)?.label || defaultVoice}
+                  </span>
+                  <span className={styles.adminNote}>
+                    🔒 Controlled by administrator
+                  </span>
+                </div>
+              )}
               <span className={styles.helpText}>TTS voice used for newly uploaded scripts.</span>
             </div>
 
             {/* Captions Style */}
             <div className={styles.formGroup}>
               <label className={styles.label}>Captions Styling Preset</label>
-              <select
-                value={subtitleStyle}
-                onChange={(e) => setSubtitleStyle(e.target.value)}
-                className={styles.select}
-              >
-                <option value="yellow-outline">🔥 Neon Yellow with Black Outline</option>
-                <option value="cyan-glow">🌐 Cyber Cyan with Glow Shadow</option>
-                <option value="classic-white">📄 Minimal White with Translucent Plate</option>
-                <option value="bold-uppercase">💥 Bold Red Uppercase Impact</option>
-              </select>
+              {isAdmin ? (
+                <select
+                  value={subtitleStyle}
+                  onChange={(e) => setSubtitleStyle(e.target.value)}
+                  className={styles.select}
+                >
+                  <option value="yellow-outline">🔥 Neon Yellow with Black Outline</option>
+                  <option value="cyan-glow">🌐 Cyber Cyan with Glow Shadow</option>
+                  <option value="classic-white">📄 Minimal White with Translucent Plate</option>
+                  <option value="bold-uppercase">💥 Bold Red Uppercase Impact</option>
+                </select>
+              ) : (
+                <div className={styles.readOnlyField}>
+                  <span className={styles.readOnlyValue}>
+                    {subtitleStyle === 'yellow-outline' && '🔥 Neon Yellow with Black Outline'}
+                    {subtitleStyle === 'cyan-glow' && '🌐 Cyber Cyan with Glow Shadow'}
+                    {subtitleStyle === 'classic-white' && '📄 Minimal White with Translucent Plate'}
+                    {subtitleStyle === 'bold-uppercase' && '💥 Bold Red Uppercase Impact'}
+                  </span>
+                  <span className={styles.adminNote}>
+                    🔒 Controlled by administrator
+                  </span>
+                </div>
+              )}
               <span className={styles.helpText}>Font overlay preset for Whisper compiled subtitles.</span>
             </div>
           </div>
