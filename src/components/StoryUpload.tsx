@@ -326,7 +326,7 @@ Subtitles style: "${subtitleStyle}"
 
   // Live Calculations for Step 1
   const wordCount = storyText.trim() ? storyText.trim().split(/\s+/).filter(Boolean).length : 0;
-  const estimatedScenes = Math.max(0, Math.ceil(wordCount / 75));
+  const estimatedScenes = Math.max(0, Math.ceil(wordCount / 45));
   
   const formatEstLength = (words: number) => {
     if (words === 0) return '0 min';
@@ -467,7 +467,7 @@ Subtitles style: "${subtitleStyle}"
                     <strong>{creditsAvailable}</strong> available. You cannot proceed to the next step.
                   </p>
                   <ul className={styles.quotaBannerList}>
-                    <li>Reduce your story length (~1 scene per 75 words)</li>
+                    <li>Reduce your story length (~1 scene per 45 words)</li>
                     <li>Wait for quota reset — resets in <strong>{resetCountdown}</strong></li>
                     <li>Contact your administrator for a quota increase</li>
                   </ul>

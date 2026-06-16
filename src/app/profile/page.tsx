@@ -87,6 +87,15 @@ export default function ProfilePage() {
         }
       });
       
+      if (response.status === 401) {
+        localStorage.removeItem('storyforge_token');
+        localStorage.removeItem('storyforge_username');
+        localStorage.removeItem('storyforge_role');
+        window.dispatchEvent(new Event('auth-changed'));
+        router.push('/login');
+        return;
+      }
+      
       if (!response.ok) {
         throw new Error('Failed to fetch user profile.');
       }

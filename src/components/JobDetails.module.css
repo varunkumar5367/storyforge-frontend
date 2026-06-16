@@ -722,4 +722,29 @@
   cursor: not-allowed;
 }
 
+@media (max-width: 768px) {
+  .container {
+    padding: 16px;
+    gap: 16px;
+  }
+  .jobTitle {
+    font-size: 1.25rem;
+  }
+  .stepper {
+    justify-content: center;
+    gap: 8px;
+  }
+  .step {
+    min-width: 50px;
+  }
+  .stepDot {
+    width: 24px;
+    height: 24px;
+    font-size: 0.7rem;
+  }
+  .stepLabel {
+    font-size: 0.65rem;
+  }
+}
+
 

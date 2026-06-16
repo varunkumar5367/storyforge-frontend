@@ -41,10 +41,6 @@ export default function SettingsPage() {
   // ── Role-based control ───────────────────────────────────────────────────
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // ── API & Server section (admin only) ────────────────────────────────────
-  const [apiEndpoint, setApiEndpoint] = useState('http://127.0.0.1:8000');
-  const [backendOnline, setBackendOnline] = useState<boolean | null>(null);
-
   // ── Production Presets ───────────────────────────────────────────────────
   const [defaultVoice, setDefaultVoice] = useState('en-US-JennyNeural');
   const [subtitleStyle, setSubtitleStyle] = useState('yellow-outline');
@@ -65,7 +61,6 @@ export default function SettingsPage() {
     if (typeof window === 'undefined') return;
     const role = localStorage.getItem('storyforge_role');
     setIsAdmin(role === 'admin');
-    setApiEndpoint(localStorage.getItem('storyforge_api_url') || 'http://127.0.0.1:8000');
     setDefaultVoice(localStorage.getItem('storyforge_default_voice') || 'en-US-JennyNeural');
     setSubtitleStyle(localStorage.getItem('storyforge_sub_style') || 'yellow-outline');
 
@@ -99,16 +94,6 @@ export default function SettingsPage() {
     return () => clearInterval(id);
   }, [resetTarget]);
 
-  // ── Backend health check (admin) ─────────────────────────────────────────
-  const checkBackendHealth = useCallback(async () => {
-    try {
-      const res = await fetch(`${apiEndpoint}/api/status/pollen/balance`);
-      setBackendOnline(res.ok);
-    } catch {
-      setBackendOnline(false);
-    }
-  }, [apiEndpoint]);
-
   // ── Pollen fetch ─────────────────────────────────────────────────────────
   const checkPollen = useCallback(async () => {
     setCheckingPollen(true);
@@ -123,40 +108,21 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    checkBackendHealth();
     checkPollen();
-  }, [checkBackendHealth, checkPollen]);
+  }, [checkPollen]);
 
   // ── Save handler ─────────────────────────────────────────────────────────
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaveWarning(null);
 
-    // URL validation (admin form)
-    if (isAdmin) {
-      if (!apiEndpoint.trim()) {
-        setSaveWarning('Endpoint cannot be empty. Expected format: http://IP:PORT');
-        return;
-      }
-      try { new URL(apiEndpoint); } catch {
-        setSaveWarning('Invalid URL. Expected format: http://127.0.0.1:8000');
-        return;
-      }
-    }
-
     if (typeof window !== 'undefined') {
-      if (isAdmin) localStorage.setItem('storyforge_api_url', apiEndpoint);
       localStorage.setItem('storyforge_default_voice', defaultVoice);
       localStorage.setItem('storyforge_sub_style', subtitleStyle);
     }
 
-    // Warn if backend unreachable (admin only)
-    if (isAdmin && backendOnline === false) {
-      setSaveWarning('Settings saved, but backend endpoint is unreachable.');
-    } else {
-      setSavedSuccess(true);
-      setTimeout(() => setSavedSuccess(false), 3000);
-    }
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 3000);
   };
 
   // ── Derived quota values ─────────────────────────────────────────────────
@@ -193,53 +159,6 @@ export default function SettingsPage() {
 
       <form onSubmit={handleSave} className={styles.grid}>
 
-        {/* ── API & Server Connections — ADMIN ONLY ──────────────────────── */}
-        {isAdmin && (
-          <div className={`glass ${styles.card}`}>
-            <h3 className={styles.cardTitle}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <rect x="2" y="2" width="20" height="8" rx="2" ry="2"/>
-                <rect x="2" y="14" width="20" height="8" rx="2" ry="2"/>
-                <line x1="6" y1="6" x2="6.01" y2="6"/>
-                <line x1="6" y1="18" x2="6.01" y2="18"/>
-              </svg>
-              API &amp; Server Connections
-            </h3>
-            <div className={styles.cardBody}>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>FastAPI Backend Endpoint</label>
-                <input
-                  type="text"
-                  value={apiEndpoint}
-                  onChange={(e) => setApiEndpoint(e.target.value)}
-                  className={styles.input}
-                  placeholder="http://127.0.0.1:8000"
-                />
-                <span className={styles.helpText}>Location of the Python media rendering daemon.</span>
-              </div>
-              <div className={styles.formGroup}>
-                <label className={styles.label}>Backend Server Status</label>
-                <div className={styles.statusIndicator}>
-                  <div className={`${styles.dot} ${backendOnline ? styles.dotActive : styles.dotInactive}`}/>
-                  <span>{backendOnline === null ? 'Pinging…' : backendOnline ? 'Online (Connected)' : 'Offline (Unreachable)'}</span>
-                  <button
-                    type="button"
-                    onClick={checkBackendHealth}
-                    style={{
-                      marginLeft: '8px', fontSize: '11px', padding: '3px 8px',
-                      borderRadius: '4px', border: '1px solid var(--border-color)',
-                      background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Refresh
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* ── Production Presets ──────────────────────────────────────────── */}
         <div className={`glass ${styles.card}`}>
           <h3 className={styles.cardTitle}>
@@ -255,64 +174,29 @@ export default function SettingsPage() {
             {/* TTS Voice */}
             <div className={styles.formGroup}>
               <label className={styles.label}>Default TTS Narration Voice</label>
-              {isAdmin ? (
-                <select
-                  value={defaultVoice}
-                  onChange={(e) => setDefaultVoice(e.target.value)}
-                  className={styles.select}
-                >
-                  {VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
-                </select>
-              ) : (
-                <div className={styles.readOnlyField}>
-                  <span className={styles.readOnlyValue}>
-                    {VOICES.find((v) => v.id === defaultVoice)?.label || 'Connor (Ireland Male)'}
-                  </span>
-                  <span className={styles.adminNote}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                    Controlled by administrator
-                  </span>
-                </div>
-              )}
+              <select
+                value={defaultVoice}
+                onChange={(e) => setDefaultVoice(e.target.value)}
+                className={styles.select}
+              >
+                {VOICES.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
+              </select>
               <span className={styles.helpText}>TTS voice used for newly uploaded scripts.</span>
             </div>
 
             {/* Captions Style */}
             <div className={styles.formGroup}>
               <label className={styles.label}>Captions Styling Preset</label>
-              {isAdmin ? (
-                <select
-                  value={subtitleStyle}
-                  onChange={(e) => setSubtitleStyle(e.target.value)}
-                  className={styles.select}
-                >
-                  <option value="yellow-outline">🔥 Neon Yellow with Black Outline</option>
-                  <option value="cyan-glow">🌐 Cyber Cyan with Glow Shadow</option>
-                  <option value="classic-white">📄 Minimal White with Translucent Plate</option>
-                  <option value="bold-uppercase">💥 Bold Red Uppercase Impact</option>
-                </select>
-              ) : (
-                <div className={styles.readOnlyField}>
-                  <span className={styles.readOnlyValue}>
-                    {{
-                      'yellow-outline': '🔥 Neon Yellow with Black Outline',
-                      'cyan-glow': '🌐 Cyber Cyan with Glow Shadow',
-                      'classic-white': '📄 Minimal White with Translucent Plate',
-                      'bold-uppercase': '💥 Bold Red Uppercase Impact',
-                    }[subtitleStyle] || '🔥 Neon Yellow with Black Outline'}
-                  </span>
-                  <span className={styles.adminNote}>
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-                    </svg>
-                    Controlled by administrator
-                  </span>
-                </div>
-              )}
+              <select
+                value={subtitleStyle}
+                onChange={(e) => setSubtitleStyle(e.target.value)}
+                className={styles.select}
+              >
+                <option value="yellow-outline">🔥 Neon Yellow with Black Outline</option>
+                <option value="cyan-glow">🌐 Cyber Cyan with Glow Shadow</option>
+                <option value="classic-white">📄 Minimal White with Translucent Plate</option>
+                <option value="bold-uppercase">💥 Bold Red Uppercase Impact</option>
+              </select>
               <span className={styles.helpText}>Font overlay preset for Whisper compiled subtitles.</span>
             </div>
           </div>

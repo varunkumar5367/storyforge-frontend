@@ -327,3 +327,17 @@
 [data-theme="light"] .cardTitle {
   border-bottom-color: #e5e7eb;
 }
+
+@media (max-width: 768px) {
+  .container {
+    padding: 24px 16px;
+    gap: 20px;
+  }
+  .title {
+    font-size: 1.75rem;
+  }
+  .card {
+    padding: 18px;
+    gap: 16px;
+  }
+}

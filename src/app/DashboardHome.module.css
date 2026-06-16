@@ -323,6 +323,23 @@
 
 @media (max-width: 768px) {
   .container {
-    padding: 20px;
+    padding: 24px 16px;
+    gap: 24px;
+  }
+  .welcomeTitle {
+    font-size: 1.75rem;
+  }
+  .welcomeDesc {
+    font-size: 0.9rem;
+  }
+  .sectionTitle {
+    font-size: 1.25rem;
+  }
+  .statCard {
+    padding: 16px;
+    gap: 12px;
+  }
+  .statValue {
+    font-size: 1.5rem;
   }
 }
