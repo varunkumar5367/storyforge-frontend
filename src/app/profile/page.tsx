@@ -9,7 +9,8 @@ import {
   updateProfile,
   changePassword,
   requestPollenCredits,
-  getUserPollenRequests
+  getUserPollenRequests,
+  BASE_URL
 } from '@/utils/api';
 
 export default function ProfilePage() {
@@ -80,8 +81,7 @@ export default function ProfilePage() {
         return;
       }
       
-      const apiBase = localStorage.getItem('storyforge_api_url') || 'http://127.0.0.1:8000';
-      const response = await fetch(`${apiBase}/api/auth/me`, {
+      const response = await fetch(`${BASE_URL}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { getPollenBalance, PollenBalanceResponse } from '@/utils/api';
+import { getPollenBalance, PollenBalanceResponse, BASE_URL } from '@/utils/api';
 import styles from './Settings.module.css';
 
 const MAX_QUOTA = 20;
@@ -69,8 +69,7 @@ export default function SettingsPage() {
       try {
         const token = localStorage.getItem('storyforge_token');
         if (!token) return;
-        const apiBase = localStorage.getItem('storyforge_api_url') || 'http://127.0.0.1:8000';
-        const response = await fetch(`${apiBase}/api/auth/me`, {
+        const response = await fetch(`${BASE_URL}/api/auth/me`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }

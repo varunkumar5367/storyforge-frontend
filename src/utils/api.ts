@@ -83,7 +83,7 @@ const BASE_URL_DYNAMIC = {
     return url.replace(searchValue, replaceValue);
   }
 };
-const BASE_URL = BASE_URL_DYNAMIC as unknown as string;
+export const BASE_URL = BASE_URL_DYNAMIC as unknown as string;
 
 export function getAuthHeaders(headers: Record<string, string> = {}): Record<string, string> {
   if (typeof window !== 'undefined') {
