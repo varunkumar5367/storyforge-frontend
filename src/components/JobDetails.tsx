@@ -39,6 +39,45 @@ export default function JobDetails({ jobId, onStatusUpdate }: JobDetailsProps) {
   const [loading, setLoading] = useState(false);
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Time remaining estimation state
+  const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
+
+  // Calculate and update estimated time remaining whenever job details are refreshed
+  useEffect(() => {
+    if (job && !['completed', 'failed'].includes(job.status)) {
+      const totalScenes = job.scenes?.length || 0;
+      const completedScenes = job.scenes?.filter(s => s.image_path && s.audio_path && s.subtitle_path).length || 0;
+      const remainingScenes = totalScenes - completedScenes;
+      const avgSceneDur = (job as any).avg_scene_duration || 45.0;
+      
+      let estSeconds = remainingScenes * avgSceneDur;
+      if (job.status === 'composing_video') {
+        estSeconds += 30; // 30s buffer for video composer
+      }
+      setTimeRemaining(Math.max(0, Math.round(estSeconds)));
+    } else {
+      setTimeRemaining(null);
+    }
+  }, [job]);
+
+  // Tick the remaining seconds countdown live every second
+  useEffect(() => {
+    if (timeRemaining === null || timeRemaining <= 0) return;
+    
+    const timer = setInterval(() => {
+      setTimeRemaining((prev) => {
+        if (prev === null) return null;
+        if (prev <= 1) {
+          return 1; // Hold at 1s to prevent hitting 0s before backend changes status
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [timeRemaining]);
+
+
   // Advanced Frontend States
   const [activeTab, setActiveTab] = useState<'video' | 'bible' | 'scenes' | 'thumbnail_editor'>('video');
   const [scenePage, setScenePage] = useState(0);
@@ -334,19 +373,27 @@ export default function JobDetails({ jobId, onStatusUpdate }: JobDetailsProps) {
 
       {/* Stepper Node Graph */}
       <div className={`glass ${styles.stepperContainer}`}>
-        <div className={styles.stepperTitle}>
-          {isProcessing ? (
-            <>
-              <svg className="animate-spin-fast" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
-                <path d="M12 2v4M12 18v4"/>
-              </svg>
-              Pipeline Processing — {job.progress_percent}%
-            </>
-          ) : isCompleted ? (
-            '🎉 Production Completed'
-          ) : (
-            '❌ Production Failed'
+        <div className={styles.stepperTitle} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {isProcessing ? (
+              <>
+                <svg className="animate-spin-fast" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
+                  <path d="M12 2v4M12 18v4"/>
+                </svg>
+                <span>Pipeline Processing — {job.progress_percent}% ({job.status.replace(/_/g, ' ')})</span>
+              </>
+            ) : isCompleted ? (
+              '🎉 Production Completed'
+            ) : (
+              '❌ Production Failed'
+            )}
+          </div>
+          {isProcessing && timeRemaining !== null && (
+            <div style={{ fontSize: '0.82rem', color: 'var(--accent-purple)', fontWeight: 700, background: 'rgba(139, 92, 246, 0.08)', padding: '4px 12px', borderRadius: '12px', border: '1px solid rgba(139, 92, 246, 0.15)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span>⏱️ Est. Time Remaining:</span>
+              <span>{Math.floor(timeRemaining / 60)}:{(timeRemaining % 60).toString().padStart(2, '0')}</span>
+            </div>
           )}
         </div>
         <div className={styles.stepper}>

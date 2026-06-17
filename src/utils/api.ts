@@ -739,3 +739,79 @@ export async function getUserJobs(userId: string): Promise<JobSummary[]> {
   }
   return response.json();
 }
+
+export interface AdminServerStatusResponse {
+  success: boolean;
+  status: {
+    id: string;
+    status: 'online' | 'offline';
+    tunnel_url: string | null;
+    last_ping: string;
+    max_concurrent_tasks: number;
+    max_concurrent_users: number;
+    active_tasks: number;
+    active_users: number;
+    cpu_usage: number;
+    ram_usage: number;
+  };
+  wake_requests: Array<{
+    id: string;
+    status: 'pending' | 'accepted' | 'ignored';
+    message: string | null;
+    created_at: string;
+  }>;
+}
+
+/**
+ * Fetches current live server status, resource usage, and pending wake requests (Admin only)
+ */
+export async function fetchServerStatus(): Promise<AdminServerStatusResponse> {
+  const response = await fetch(`${BASE_URL}/api/admin/server-status`, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to fetch live server status.');
+  }
+  return response.json();
+}
+
+/**
+ * Updates backend configuration settings (Admin only)
+ */
+export async function updateServerSettings(maxTasks: number, maxUsers: number): Promise<{ success: boolean }> {
+  const response = await fetch(`${BASE_URL}/api/admin/server-settings`, {
+    method: 'POST',
+    headers: getAuthHeaders({
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify({
+      max_concurrent_tasks: maxTasks,
+      max_concurrent_users: maxUsers
+    }),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to update server settings.');
+  }
+  return response.json();
+}
+
+/**
+ * Approves or ignores a wake request from the admin console (Admin only)
+ */
+export async function reviewWakeRequest(requestId: string, status: 'accepted' | 'ignored'): Promise<{ success: boolean; reviewed: boolean }> {
+  const response = await fetch(`${BASE_URL}/api/admin/wake-requests/${requestId}/review`, {
+    method: 'POST',
+    headers: getAuthHeaders({
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify({ status }),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to review wake request.');
+  }
+  return response.json();
+}
+

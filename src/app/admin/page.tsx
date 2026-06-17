@@ -17,19 +17,25 @@ import {
   reviewPollenRequest,
   PollenRequest,
   fetchAdminAnalytics,
-  SystemAnalytics
+  SystemAnalytics,
+  fetchServerStatus,
+  updateServerSettings,
+  reviewWakeRequest
 } from '@/utils/api';
 
 export default function AdminPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'analytics'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'analytics' | 'server'>('users');
   
   // Data states
   const [users, setUsers] = useState<UserResponse[]>([]);
   const [logs, setLogs] = useState<string[]>([]);
   const [allRequests, setAllRequests] = useState<PollenRequest[]>([]);
   const [analytics, setAnalytics] = useState<SystemAnalytics | null>(null);
+  const [serverStatus, setServerStatus] = useState<any | null>(null);
+  const [maxTasksInput, setMaxTasksInput] = useState<number>(1);
+  const [maxUsersInput, setMaxUsersInput] = useState<number>(5);
   
   // Loading & error states
   const [loading, setLoading] = useState(true);
@@ -85,16 +91,22 @@ export default function AdminPage() {
     setLoading(true);
     setError(null);
     try {
-      const [usersData, logsData, requestsData, analyticsData] = await Promise.all([
+      const [usersData, logsData, requestsData, analyticsData, serverStatusData] = await Promise.all([
         fetchAdminUsers(),
         fetchAdminLogs().catch(() => ({ success: true, logs: ['[Logs not available or empty]'] })),
         getAllPollenRequests().catch(() => ({ success: true, requests: [] })),
-        fetchAdminAnalytics().catch(() => null)
+        fetchAdminAnalytics().catch(() => null),
+        fetchServerStatus().catch(() => null)
       ]);
       setUsers(usersData);
       setLogs(logsData.logs || []);
       setAllRequests(requestsData.requests || []);
       setAnalytics(analyticsData);
+      if (serverStatusData && serverStatusData.success) {
+        setServerStatus(serverStatusData);
+        setMaxTasksInput(serverStatusData.status.max_concurrent_tasks);
+        setMaxUsersInput(serverStatusData.status.max_concurrent_users);
+      }
     } catch (err: any) {
       setError(err.message || 'Failed to load admin dashboard data.');
     } finally {
@@ -124,6 +136,11 @@ export default function AdminPage() {
         } else if (activeTab === 'analytics') {
           const analyticsData = await fetchAdminAnalytics().catch(() => null);
           setAnalytics(analyticsData);
+        } else if (activeTab === 'server') {
+          const serverStatusData = await fetchServerStatus().catch(() => null);
+          if (serverStatusData && serverStatusData.success) {
+            setServerStatus(serverStatusData);
+          }
         }
         
         // Quietly refresh users to catch activity heartbeat updates
@@ -336,7 +353,7 @@ export default function AdminPage() {
         marginBottom: '32px',
         gap: '24px'
       }}>
-        {(['users', 'logs', 'analytics'] as const).map((tab) => (
+        {(['users', 'logs', 'analytics', 'server'] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -354,7 +371,7 @@ export default function AdminPage() {
               outline: 'none',
             }}
           >
-            {tab === 'users' ? 'User Accounts' : tab === 'logs' ? 'System Logs' : 'System Analytics'}
+            {tab === 'users' ? 'User Accounts' : tab === 'logs' ? 'System Logs' : tab === 'analytics' ? 'System Analytics' : 'Server Control'}
           </button>
         ))}
       </div>
@@ -1297,6 +1314,240 @@ export default function AdminPage() {
 
             </div>
           )}
+        </div>
+      )}
+
+      {!loading && activeTab === 'server' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+          {/* Status and Resources Gauges */}
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: '32px' }}>
+            <div className="glass" style={{ padding: '32px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{
+                  width: '12px',
+                  height: '12px',
+                  borderRadius: '50%',
+                  backgroundColor: serverStatus?.status?.status === 'online' ? 'var(--accent-green)' : 'var(--accent-red)',
+                  display: 'inline-block',
+                  boxShadow: serverStatus?.status?.status === 'online' ? '0 0 10px var(--accent-green)' : 'none'
+                }} />
+                Backend Service: {serverStatus?.status?.status === 'online' ? 'Online' : 'Offline'}
+              </h3>
+              
+              {serverStatus?.status?.status === 'online' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '24px' }}>
+                  <div>
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>Tunnel URL (trycloudflare)</span>
+                    <div style={{
+                      backgroundColor: 'rgba(255,255,255,0.03)',
+                      border: '1px solid var(--border-color)',
+                      padding: '12px',
+                      borderRadius: '8px',
+                      fontFamily: 'monospace',
+                      fontSize: '14px',
+                      color: 'var(--accent-purple)',
+                      wordBreak: 'break-all',
+                      marginTop: '4px'
+                    }}>
+                      {serverStatus.status.tunnel_url || 'Not set'}
+                    </div>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '13px', color: 'var(--text-secondary)', fontWeight: 600 }}>Last Ping Heartbeat</span>
+                    <div style={{ fontSize: '14px', color: 'var(--text-primary)', marginTop: '4px' }}>
+                      {serverStatus.status.last_ping ? new Date(serverStatus.status.last_ping).toLocaleString() : 'Never'}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Resource Gauges */}
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr 1fr', gap: '24px' }}>
+                <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '8px' }}>CPU Usage</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {serverStatus?.status?.cpu_usage !== undefined ? `${serverStatus.status.cpu_usage.toFixed(1)}%` : '—'}
+                  </div>
+                  <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', marginTop: '12px', overflow: 'hidden' }}>
+                    <div style={{ width: `${serverStatus?.status?.cpu_usage || 0}%`, height: '100%', background: 'var(--accent-purple)', borderRadius: '3px' }} />
+                  </div>
+                </div>
+
+                <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '8px' }}>RAM Usage</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {serverStatus?.status?.ram_usage !== undefined ? `${serverStatus.status.ram_usage.toFixed(1)}%` : '—'}
+                  </div>
+                  <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', marginTop: '12px', overflow: 'hidden' }}>
+                    <div style={{ width: `${serverStatus?.status?.ram_usage || 0}%`, height: '100%', background: 'var(--accent-cyan)', borderRadius: '3px' }} />
+                  </div>
+                </div>
+
+                <div style={{ padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600, marginBottom: '8px' }}>Pipeline Tasks</div>
+                  <div style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                    {serverStatus?.status?.active_tasks !== undefined ? `${serverStatus.status.active_tasks} / ${serverStatus.status.max_concurrent_tasks}` : '—'}
+                  </div>
+                  <div style={{ height: '6px', background: 'rgba(255,255,255,0.05)', borderRadius: '3px', marginTop: '12px', overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.min(100, ((serverStatus?.status?.active_tasks || 0) / (serverStatus?.status?.max_concurrent_tasks || 1)) * 100)}%`, height: '100%', background: 'var(--accent-green)', borderRadius: '3px' }} />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Config Settings Panel */}
+            <div className="glass" style={{ padding: '32px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '24px' }}>Server Limits</h3>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div>
+                  <label style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                    Max Concurrent Tasks: {maxTasksInput}
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="10"
+                    value={maxTasksInput}
+                    onChange={(e) => setMaxTasksInput(parseInt(e.target.value))}
+                    style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '14px', color: 'var(--text-secondary)', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
+                    Max Concurrent Users: {maxUsersInput}
+                  </label>
+                  <input
+                    type="range"
+                    min="1"
+                    max="50"
+                    value={maxUsersInput}
+                    onChange={(e) => setMaxUsersInput(parseInt(e.target.value))}
+                    style={{ width: '100%', accentColor: 'var(--accent-purple)' }}
+                  />
+                </div>
+
+                <button
+                  onClick={async () => {
+                    try {
+                      await updateServerSettings(maxTasksInput, maxUsersInput);
+                      alert('Server settings saved successfully.');
+                      const updated = await fetchServerStatus();
+                      setServerStatus(updated);
+                    } catch (err: any) {
+                      alert(err.message || 'Failed to update server settings.');
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: 'var(--gradient-primary)',
+                    border: 'none',
+                    color: '#fff',
+                    fontWeight: 700,
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    boxShadow: 'var(--glow-purple)',
+                    marginTop: '8px'
+                  }}
+                >
+                  Save Settings Limits
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Pending Wake Requests */}
+          <div className="glass" style={{ padding: '32px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)' }}>
+            <h3 style={{ fontSize: '20px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '24px' }}>
+              Pending Wake Requests
+            </h3>
+            
+            {(!serverStatus?.wake_requests || serverStatus.wake_requests.filter((r: any) => r.status === 'pending').length === 0) ? (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '14px' }}>No pending wake requests in the queue.</p>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {serverStatus.wake_requests.filter((r: any) => r.status === 'pending').map((req: any) => (
+                  <div
+                    key={req.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      padding: '16px 24px',
+                      borderRadius: '8px',
+                      border: '1px solid var(--border-color)',
+                      flexDirection: isMobile ? 'column' : 'row',
+                      gap: '16px'
+                    }}
+                  >
+                    <div style={{ alignSelf: 'flex-start' }}>
+                      <div style={{ fontSize: '14px', color: 'var(--text-muted)' }}>
+                        Received: {new Date(req.created_at).toLocaleString()}
+                      </div>
+                      <div style={{ fontSize: '15px', color: 'var(--text-primary)', marginTop: '4px', fontWeight: 500 }}>
+                        Message: "{req.message || 'No message provided.'}"
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px', alignSelf: isMobile ? 'flex-end' : 'center' }}>
+                      <button
+                        onClick={async () => {
+                          if (!confirm('Ignore this wake request?')) return;
+                          try {
+                            await reviewWakeRequest(req.id, 'ignored');
+                            const updated = await fetchServerStatus();
+                            setServerStatus(updated);
+                          } catch (err: any) {
+                            alert(err.message || 'Failed to review request.');
+                          }
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid var(--border-color)',
+                          color: 'var(--text-primary)',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          fontSize: '13px'
+                        }}
+                      >
+                        Ignore
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            await reviewWakeRequest(req.id, 'accepted');
+                            alert('Wake request approved. Ensure you start the uvicorn backend and Cloudflare Quick Tunnel on your laptop.');
+                            const updated = await fetchServerStatus();
+                            setServerStatus(updated);
+                          } catch (err: any) {
+                            alert(err.message || 'Failed to approve request.');
+                          }
+                        }}
+                        style={{
+                          padding: '8px 16px',
+                          background: 'var(--accent-purple)',
+                          border: 'none',
+                          color: '#fff',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontWeight: 700,
+                          fontSize: '13px',
+                          boxShadow: 'var(--glow-purple)'
+                        }}
+                      >
+                        Accept & Start
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
     </div>

@@ -22,6 +22,151 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Server Waking & Status states
+  const [serverState, setServerState] = useState<'checking' | 'online' | 'waking' | 'timeout'>('checking');
+  const [countdown, setCountdown] = useState(120);
+  const [wakeMessage, setWakeMessage] = useState('');
+  const [sendingWake, setSendingWake] = useState(false);
+
+  const isAuthPage = pathname === '/login' || pathname === '/register';
+
+  const checkServerStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/server-status');
+      if (!res.ok) throw new Error('API failed');
+      const data = await res.json();
+      
+      if (data.status === 'online' && data.tunnel_url) {
+        try {
+          const controller = new AbortController();
+          const id = setTimeout(() => controller.abort(), 4000);
+          const healthRes = await fetch(`${data.tunnel_url}/health`, {
+            signal: controller.signal,
+            mode: 'cors'
+          });
+          clearTimeout(id);
+          if (healthRes.ok) {
+            localStorage.setItem('storyforge_api_url', data.tunnel_url);
+            window.dispatchEvent(new CustomEvent('api-url-changed'));
+            setServerState('online');
+            return true;
+          }
+        } catch (err) {
+          console.warn('Tunnel health check failed:', err);
+        }
+      }
+      return false;
+    } catch (error) {
+      console.error('Failed to check server status:', error);
+      return false;
+    }
+  }, []);
+
+  const sendWakeRequest = useCallback(async (message?: string) => {
+    const lastWake = localStorage.getItem('storyforge_last_wake');
+    const now = Date.now();
+    if (lastWake && now - parseInt(lastWake) < 5 * 60 * 1000) {
+      console.log('Wake request rate-limited (sent recently). Polling instead.');
+      return;
+    }
+    try {
+      await fetch('/api/wake-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: message || 'Automatic wake request on page load' })
+      });
+      localStorage.setItem('storyforge_last_wake', String(now));
+    } catch (err) {
+      console.error('Failed to send wake request:', err);
+    }
+  }, []);
+
+  // Check server status on mount or path change
+  useEffect(() => {
+    if (isAuthPage) {
+      setServerState('online');
+      return;
+    }
+
+    let isMounted = true;
+    let pollInterval: NodeJS.Timeout | null = null;
+
+    const initCheck = async () => {
+      setServerState('checking');
+      const isOnline = await checkServerStatus();
+      if (!isOnline && isMounted) {
+        await sendWakeRequest();
+        setServerState('waking');
+        setCountdown(120);
+      }
+    };
+
+    initCheck();
+
+    pollInterval = setInterval(async () => {
+      if (isMounted) {
+        const isOnline = await checkServerStatus();
+        if (isOnline) {
+          if (pollInterval) clearInterval(pollInterval);
+        }
+      }
+    }, 4000);
+
+    return () => {
+      isMounted = false;
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [pathname, checkServerStatus, sendWakeRequest, isAuthPage]);
+
+  // Countdown timer for waking state
+  useEffect(() => {
+    if (serverState !== 'waking') return;
+
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setServerState('timeout');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [serverState]);
+
+  const handleManualWakeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSendingWake(true);
+    
+    const lastWake = localStorage.getItem('storyforge_last_wake');
+    const now = Date.now();
+    if (lastWake && now - parseInt(lastWake) < 5 * 60 * 1000) {
+      const remainingMins = Math.ceil((5 * 60 * 1000 - (now - parseInt(lastWake))) / 60000);
+      alert(`Please wait ${remainingMins} minute(s) before sending another wake request.`);
+      setSendingWake(false);
+      return;
+    }
+
+    try {
+      await fetch('/api/wake-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: wakeMessage })
+      });
+      localStorage.setItem('storyforge_last_wake', String(now));
+      setWakeMessage('');
+      setServerState('waking');
+      setCountdown(120);
+    } catch (err) {
+      alert('Failed to send wake request. Check database status.');
+    } finally {
+      setSendingWake(false);
+    }
+  };
+
+
   // Auth handler
   const checkAuth = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -184,6 +329,147 @@ export default function MainLayout({ children }: MainLayoutProps) {
           <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
           <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/>
         </svg>
+      </div>
+    );
+  }
+
+  if (serverState !== 'online' && !isAuthPage) {
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        width: '100vw',
+        backgroundColor: 'var(--bg-dark)',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        zIndex: 9999,
+        padding: '20px',
+        boxSizing: 'border-box'
+      }}>
+        <div className="glass" style={{
+          maxWidth: '500px',
+          width: '100%',
+          padding: '40px',
+          borderRadius: 'var(--border-radius-lg)',
+          textAlign: 'center',
+          boxShadow: 'var(--shadow-lg), var(--glow-purple)',
+          border: '1px solid rgba(139, 92, 246, 0.2)'
+        }}>
+          {serverState === 'checking' && (
+            <>
+              <svg className="animate-spin-fast" style={{ margin: '0 auto 24px', color: 'var(--accent-purple)' }} width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83"/>
+              </svg>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '12px', background: 'var(--gradient-cyber)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+                Connecting to StoryForge
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5 }}>
+                Checking if the video generation backend is online...
+              </p>
+            </>
+          )}
+
+          {serverState === 'waking' && (
+            <>
+              <svg className="animate-spin-slow" style={{ margin: '0 auto 24px', color: 'var(--accent-cyan)' }} width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
+                <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83"/>
+              </svg>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '12px', color: 'var(--text-primary)' }}>
+                Waking up the server...
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: '24px' }}>
+                A wake request was sent to the admin's laptop. The dashboard will load automatically once the server responds.
+              </p>
+              <div style={{
+                fontSize: '1.25rem',
+                fontWeight: 700,
+                color: 'var(--accent-red)',
+                background: 'rgba(239, 68, 68, 0.08)',
+                padding: '10px 20px',
+                borderRadius: '8px',
+                display: 'inline-block',
+                border: '1px solid rgba(239, 68, 68, 0.15)'
+              }}>
+                Waiting for admin response: {Math.floor(countdown / 60)}:{(countdown % 60).toString().padStart(2, '0')}
+              </div>
+            </>
+          )}
+
+          {serverState === 'timeout' && (
+            <>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: 'var(--accent-red)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                margin: '0 auto 24px',
+                border: '1px solid rgba(239, 68, 68, 0.2)'
+              }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <line x1="12" y1="9" x2="12" y2="13"/>
+                  <line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+              </div>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 800, marginBottom: '12px', color: 'var(--text-primary)' }}>
+                Server is Offline
+              </h2>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', lineHeight: 1.5, marginBottom: '24px' }}>
+                The server is currently offline. Please contact the admin or send a request to start it.
+              </p>
+              
+              <form onSubmit={handleManualWakeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <textarea
+                  value={wakeMessage}
+                  onChange={(e) => setWakeMessage(e.target.value)}
+                  placeholder="Optional message to the admin..."
+                  maxLength={150}
+                  style={{
+                    width: '100%',
+                    height: '80px',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    backgroundColor: 'rgba(255,255,255,0.03)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '0.9rem',
+                    resize: 'none',
+                    outline: 'none',
+                  }}
+                />
+                <button
+                  type="submit"
+                  disabled={sendingWake}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    background: 'var(--gradient-primary)',
+                    border: 'none',
+                    color: '#fff',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    boxShadow: 'var(--glow-purple)',
+                    transition: 'all 0.2s',
+                    opacity: sendingWake ? 0.7 : 1
+                  }}
+                >
+                  {sendingWake ? 'Sending Notification...' : 'Send Wake Request'}
+                </button>
+              </form>
+            </>
+          )}
+        </div>
       </div>
     );
   }
