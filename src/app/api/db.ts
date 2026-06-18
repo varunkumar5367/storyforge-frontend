@@ -15,7 +15,7 @@ export function getDbPool() {
       idleTimeoutMillis: 5000,
       connectionTimeoutMillis: 5000,
       ssl: {
-        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false'
+        rejectUnauthorized: false
       }
     });
   }
