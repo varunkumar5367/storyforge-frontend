@@ -346,7 +346,7 @@ export default function JobDetails({ jobId, onStatusUpdate }: JobDetailsProps) {
             )}
           </div>
         </div>
-        {isProcessing && (
+        {(isProcessing || isFailed) && (
           <div className={styles.headerRight}>
             {job.status === 'paused' ? (
               <button
@@ -356,6 +356,15 @@ export default function JobDetails({ jobId, onStatusUpdate }: JobDetailsProps) {
                 disabled={togglingPause}
               >
                 ▶ Resume Generation
+              </button>
+            ) : job.status === 'failed' ? (
+              <button
+                type="button"
+                className={`${styles.actionBtn} ${styles.resumeBtn}`}
+                onClick={handleResume}
+                disabled={togglingPause}
+              >
+                🔄 Resume Failed Job
               </button>
             ) : (
               <button
