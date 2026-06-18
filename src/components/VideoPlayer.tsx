@@ -41,6 +41,7 @@ export default function VideoPlayer({ episodeMp4, thumbnailPng, jobId, thumbnail
   const [isMuted, setIsMuted] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
   const [showSpeedMenu, setShowSpeedMenu] = useState(false);
+  const [isBuffering, setIsBuffering] = useState(false);
 
   // Scrubber dragging state checks to prevent connection spam
   const [isDragging, setIsDragging] = useState(false);
@@ -80,10 +81,12 @@ export default function VideoPlayer({ episodeMp4, thumbnailPng, jobId, thumbnail
 
   const handleSeeking = () => {
     isSeekingRef.current = true;
+    setIsBuffering(true);
   };
 
   const handleSeeked = () => {
     isSeekingRef.current = false;
+    setIsBuffering(false);
     if (videoRef.current) {
       setCurrentTime(videoRef.current.currentTime);
       setLocalTime(videoRef.current.currentTime);
@@ -242,7 +245,16 @@ export default function VideoPlayer({ episodeMp4, thumbnailPng, jobId, thumbnail
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={() => setIsPlaying(false)}
             onClick={togglePlay}
+            onWaiting={() => setIsBuffering(true)}
+            onPlaying={() => setIsBuffering(false)}
+            onCanPlay={() => setIsBuffering(false)}
           />
+
+          {isBuffering && (
+            <div className={styles.videoLoadingOverlay}>
+              <div className={styles.spinner}></div>
+            </div>
+          )}
 
           {/* Premium Glass Controls */}
           <div className={styles.customVideoControls}>
