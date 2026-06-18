@@ -545,9 +545,12 @@ export default function JobDetails({ jobId, onStatusUpdate }: JobDetailsProps) {
             )}
           </div>
 
-          {/* Tab 1: Video Player */}
-          {activeTab === 'video' && isCompleted && links && (
-            <div className={styles.singleColumnOutput}>
+          {/* Tab 1: Video Player — kept mounted via CSS to avoid rebuffering on tab switch */}
+          {isCompleted && links && (
+            <div
+              className={styles.singleColumnOutput}
+              style={{ display: activeTab === 'video' ? 'block' : 'none' }}
+            >
               <VideoPlayer 
                 episodeMp4={links.episode_mp4} 
                 thumbnailPng={links.thumbnail_png} 
@@ -557,9 +560,11 @@ export default function JobDetails({ jobId, onStatusUpdate }: JobDetailsProps) {
             </div>
           )}
 
-          {/* Tab 2: Character Bible */}
-          {activeTab === 'bible' && links?.character_bible_md && (
-            <CharacterBibleViewer characterBibleMd={links.character_bible_md} />
+          {/* Tab 2: Character Bible — kept mounted via CSS to avoid reload cost */}
+          {links?.character_bible_md && (
+            <div style={{ display: activeTab === 'bible' ? 'block' : 'none' }}>
+              <CharacterBibleViewer characterBibleMd={links.character_bible_md} />
+            </div>
           )}
 
           {/* Tab 4: Thumbnail Editor */}

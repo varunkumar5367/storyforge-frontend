@@ -36,6 +36,10 @@ export default function AdminPage() {
   const [serverStatus, setServerStatus] = useState<any | null>(null);
   const [maxTasksInput, setMaxTasksInput] = useState<number>(1);
   const [maxUsersInput, setMaxUsersInput] = useState<number>(5);
+
+  // CPU/RAM sparkline history (last 20 readings)
+  const [cpuHistory, setCpuHistory] = useState<number[]>([]);
+  const [ramHistory, setRamHistory] = useState<number[]>([]);
   
   // Loading & error states
   const [loading, setLoading] = useState(true);
@@ -140,6 +144,9 @@ export default function AdminPage() {
           const serverStatusData = await fetchServerStatus().catch(() => null);
           if (serverStatusData && serverStatusData.success) {
             setServerStatus(serverStatusData);
+            // Append to sparkline history
+            setCpuHistory(prev => [...prev.slice(-19), serverStatusData.status?.cpu_usage ?? 0]);
+            setRamHistory(prev => [...prev.slice(-19), serverStatusData.status?.ram_usage ?? 0]);
           }
         }
         
@@ -1393,6 +1400,47 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
+
+              {/* CPU/RAM sparkline history chart */}
+              {(cpuHistory.length > 1 || ramHistory.length > 1) && (
+                <div style={{ marginTop: '20px', padding: '16px', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                  <div style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
+                    📈 Live Resource History (last {Math.max(cpuHistory.length, ramHistory.length)} readings · updates every 10s)
+                  </div>
+                  <svg width="100%" height="60" viewBox="0 0 200 60" preserveAspectRatio="none" style={{ display: 'block' }}>
+                    {/* CPU Line */}
+                    {cpuHistory.length > 1 && (
+                      <polyline
+                        points={cpuHistory.map((v, i) =>
+                          `${(i / (Math.max(cpuHistory.length, 1) - 1)) * 200},${60 - (v / 100) * 55}`
+                        ).join(' ')}
+                        fill="none"
+                        stroke="#8b5cf6"
+                        strokeWidth="1.5"
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                    )}
+                    {/* RAM Line */}
+                    {ramHistory.length > 1 && (
+                      <polyline
+                        points={ramHistory.map((v, i) =>
+                          `${(i / (Math.max(ramHistory.length, 1) - 1)) * 200},${60 - (v / 100) * 55}`
+                        ).join(' ')}
+                        fill="none"
+                        stroke="#06b6d4"
+                        strokeWidth="1.5"
+                        strokeLinejoin="round"
+                        strokeLinecap="round"
+                      />
+                    )}
+                  </svg>
+                  <div style={{ display: 'flex', gap: '16px', marginTop: '8px' }}>
+                    <span style={{ fontSize: '11px', color: '#8b5cf6', fontWeight: 600 }}>■ CPU</span>
+                    <span style={{ fontSize: '11px', color: '#06b6d4', fontWeight: 600 }}>■ RAM</span>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Config Settings Panel */}
