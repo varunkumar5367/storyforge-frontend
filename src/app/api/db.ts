@@ -11,10 +11,14 @@ export function getDbPool() {
     }
     pool = new Pool({
       connectionString,
+      max: 2,
+      idleTimeoutMillis: 5000,
+      connectionTimeoutMillis: 5000,
       ssl: {
-        rejectUnauthorized: false
+        rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false'
       }
     });
   }
   return pool;
 }
+

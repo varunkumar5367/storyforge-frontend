@@ -85,6 +85,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
   useEffect(() => {
     if (isAuthPage) {
       setServerState('online');
+      checkServerStatus();
       return;
     }
 
@@ -310,7 +311,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
     router.push('/login');
   };
 
-  const isAuthPage = pathname === '/login' || pathname === '/register';
 
   // Render a clean fullscreen layout for login & register pages
   if (isAuthPage) {

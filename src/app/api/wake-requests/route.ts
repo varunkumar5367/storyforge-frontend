@@ -5,18 +5,8 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
-    const pool = getDbPool();
-    const result = await pool.query(
-      'SELECT * FROM wake_requests ORDER BY created_at DESC LIMIT 50'
-    );
-    return NextResponse.json({ success: true, requests: result.rows });
-  } catch (error: any) {
-    console.error('Failed to list wake requests:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
+
+
 
 export async function POST(request: Request) {
   try {

@@ -552,9 +552,31 @@ export async function regenerateThumbnailCustom(
  */
 export function getDownloadFileUrl(jobId: string, fileType: 'video' | 'thumbnail'): string {
   const cleanBase = BASE_URL.replace(/\/$/, '');
-  const token = typeof window !== 'undefined' ? localStorage.getItem('storyforge_token') : null;
-  const tokenParam = token ? `?token=${token}` : '';
-  return `${cleanBase}/api/download/file/${jobId}/${fileType}${tokenParam}`;
+  return `${cleanBase}/api/download/file/${jobId}/${fileType}`;
+}
+
+/**
+ * Downloads a file from the backend by performing an authenticated fetch and triggering
+ * the download client-side via a temporary Blob Object URL.
+ */
+export async function downloadFileWithAuth(jobId: string, fileType: 'video' | 'thumbnail', defaultFilename: string): Promise<void> {
+  const url = getDownloadFileUrl(jobId, fileType);
+  const response = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to download file.');
+  }
+  const blob = await response.blob();
+  const blobUrl = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = blobUrl;
+  a.download = defaultFilename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  window.URL.revokeObjectURL(blobUrl);
 }
 
 export interface PollenRequest {

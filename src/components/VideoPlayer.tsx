@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { getAssetUrl, getDownloadFileUrl } from '@/utils/api';
+import { getAssetUrl, downloadFileWithAuth } from '@/utils/api';
 import styles from './VideoPlayer.module.css';
 
 interface VideoPlayerProps {
@@ -15,6 +15,23 @@ interface VideoPlayerProps {
 export default function VideoPlayer({ episodeMp4, thumbnailPng, jobId, thumbnailVersion }: VideoPlayerProps) {
   const videoUrl = episodeMp4 ? getAssetUrl(episodeMp4) : '';
   const thumbUrl = thumbnailPng ? `${getAssetUrl(thumbnailPng)}?t=${thumbnailVersion || 0}` : '';
+
+  const [downloadingType, setDownloadingType] = useState<string | null>(null);
+
+  const handleDownload = async (e: React.MouseEvent, fileType: 'video' | 'thumbnail', defaultFilename: string) => {
+    e.preventDefault();
+    if (downloadingType) return;
+    setDownloadingType(fileType);
+    try {
+      await downloadFileWithAuth(jobId, fileType, defaultFilename);
+    } catch (err: any) {
+      console.error(err);
+      alert(err.message || 'Download failed. Please try again.');
+    } finally {
+      setDownloadingType(null);
+    }
+  };
+
 
 
   const [isPlaying, setIsPlaying] = useState(false);
@@ -374,16 +391,24 @@ export default function VideoPlayer({ episodeMp4, thumbnailPng, jobId, thumbnail
               <div className={styles.fileName}>episode.mp4</div>
             </div>
           </div>
-          <a 
-            href={getDownloadFileUrl(jobId, 'video')} 
+          <button 
+            type="button"
+            onClick={(e) => handleDownload(e, 'video', `storyforge_${jobId.slice(0, 8)}_episode.mp4`)} 
             className={styles.downloadButton} 
             title="Download Video"
-            download={`storyforge_${jobId.slice(0, 8)}_episode.mp4`}
+            disabled={downloadingType !== null}
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-            </svg>
-          </a>
+            {downloadingType === 'video' ? (
+              <svg className="animate-spin-fast" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
+                <path d="M12 2v4M12 18v4"/>
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+              </svg>
+            )}
+          </button>
         </div>
 
         {/* Thumbnail Card */}
@@ -403,16 +428,24 @@ export default function VideoPlayer({ episodeMp4, thumbnailPng, jobId, thumbnail
                 <div className={styles.fileName}>thumbnail.png</div>
               </div>
             </div>
-            <a 
-              href={getDownloadFileUrl(jobId, 'thumbnail')} 
+            <button 
+              type="button"
+              onClick={(e) => handleDownload(e, 'thumbnail', `storyforge_${jobId.slice(0, 8)}_thumbnail.png`)} 
               className={styles.downloadButton} 
               title="Download Thumbnail"
-              download={`storyforge_${jobId.slice(0, 8)}_thumbnail.png`}
+              disabled={downloadingType !== null}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
-              </svg>
-            </a>
+              {downloadingType === 'thumbnail' ? (
+                <svg className="animate-spin-fast" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
+                  <path d="M12 2v4M12 18v4"/>
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+                </svg>
+              )}
+            </button>
           </div>
         )}
 

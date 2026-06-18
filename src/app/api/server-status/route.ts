@@ -28,27 +28,3 @@ export async function GET() {
   }
 }
 
-export async function POST(request: Request) {
-  try {
-    const body = await request.json();
-    const { max_concurrent_tasks, max_concurrent_users } = body;
-    
-    const pool = getDbPool();
-    await pool.query(
-      `UPDATE server_status 
-       SET max_concurrent_tasks = COALESCE($1, max_concurrent_tasks), 
-           max_concurrent_users = COALESCE($2, max_concurrent_users)
-       WHERE id = $3`,
-      [
-        max_concurrent_tasks !== undefined ? parseInt(max_concurrent_tasks) : null,
-        max_concurrent_users !== undefined ? parseInt(max_concurrent_users) : null,
-        'current'
-      ]
-    );
-    
-    return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error('Failed to update server settings:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
