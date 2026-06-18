@@ -83,12 +83,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
 
   // Check server status on mount or path change
   useEffect(() => {
-    if (isAuthPage) {
-      setServerState('online');
-      checkServerStatus();
-      return;
-    }
-
     let isMounted = true;
     let pollInterval: NodeJS.Timeout | null = null;
 
@@ -117,7 +111,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
       isMounted = false;
       if (pollInterval) clearInterval(pollInterval);
     };
-  }, [pathname, checkServerStatus, sendWakeRequest, isAuthPage]);
+  }, [pathname, checkServerStatus, sendWakeRequest]);
 
   // Countdown timer for waking state
   useEffect(() => {
@@ -333,7 +327,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     );
   }
 
-  if (serverState !== 'online' && !isAuthPage) {
+  if (serverState !== 'online') {
     return (
       <div style={{
         display: 'flex',
