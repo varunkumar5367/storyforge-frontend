@@ -306,15 +306,6 @@ export default function MainLayout({ children }: MainLayoutProps) {
   };
 
 
-  // Render a clean fullscreen layout for login & register pages
-  if (isAuthPage) {
-    return (
-      <div style={{ backgroundColor: 'var(--bg-dark)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-        {children}
-      </div>
-    );
-  }
-
   // Prevent flash of page before auth redirect finishes
   if (!authChecked && pathname !== '/login' && pathname !== '/register') {
     return (
@@ -327,6 +318,7 @@ export default function MainLayout({ children }: MainLayoutProps) {
     );
   }
 
+  // 1. Check server status first (covers all pages, including login, if offline)
   if (serverState !== 'online') {
     return (
       <div style={{
@@ -464,6 +456,15 @@ export default function MainLayout({ children }: MainLayoutProps) {
             </>
           )}
         </div>
+      </div>
+    );
+  }
+
+  // 2. Render clean fullscreen layout for login/register pages
+  if (isAuthPage) {
+    return (
+      <div style={{ backgroundColor: 'var(--bg-dark)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+        {children}
       </div>
     );
   }
