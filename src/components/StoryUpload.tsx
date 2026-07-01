@@ -9,15 +9,27 @@ const VOICES = [
   { id: 'en-US-JennyNeural', label: 'Jenny (US Female) - Default', gender: 'Female' },
   { id: 'en-US-GuyNeural', label: 'Guy (US Male)', gender: 'Male' },
   { id: 'en-US-AriaNeural', label: 'Aria (US Female)', gender: 'Female' },
+  { id: 'en-US-AnaNeural', label: 'Ana (US Child Female)', gender: 'Female' },
+  { id: 'en-US-ChristopherNeural', label: 'Christopher (US Male)', gender: 'Male' },
+  { id: 'en-US-EricNeural', label: 'Eric (US Male)', gender: 'Male' },
+  { id: 'en-US-MichelleNeural', label: 'Michelle (US Female)', gender: 'Female' },
+  { id: 'en-US-RogerNeural', label: 'Roger (US Male)', gender: 'Male' },
   { id: 'en-GB-RyanNeural', label: 'Ryan (UK Male)', gender: 'Male' },
   { id: 'en-GB-SoniaNeural', label: 'Sonia (UK Female)', gender: 'Female' },
-  { id: 'en-AU-WilliamNeural', label: 'William (Australia Male)', gender: 'Male' },
+  { id: 'en-GB-LibbyNeural', label: 'Libby (UK Female)', gender: 'Female' },
+  { id: 'en-GB-OliverNeural', label: 'Oliver (UK Male)', gender: 'Male' },
+  { id: 'en-GB-ThomasNeural', label: 'Thomas (UK Male)', gender: 'Male' },
   { id: 'en-AU-NatashaNeural', label: 'Natasha (Australia Female)', gender: 'Female' },
+  { id: 'en-AU-WilliamNeural', label: 'William (Australia Male)', gender: 'Male' },
   { id: 'en-CA-LiamNeural', label: 'Liam (Canada Male)', gender: 'Male' },
   { id: 'en-CA-ClaraNeural', label: 'Clara (Canada Female)', gender: 'Female' },
   { id: 'en-IE-ConnorNeural', label: 'Connor (Ireland Male)', gender: 'Male' },
-  { id: 'en-IN-PrabhatNeural', label: 'Prabhat (India Male)', gender: 'Male' },
+  { id: 'en-IE-EmilyNeural', label: 'Emily (Ireland Female)', gender: 'Female' },
   { id: 'en-IN-NeerjaNeural', label: 'Neerja (India Female)', gender: 'Female' },
+  { id: 'en-IN-PrabhatNeural', label: 'Prabhat (India Male)', gender: 'Male' },
+  { id: 'en-NZ-MitchellNeural', label: 'Mitchell (New Zealand Male)', gender: 'Male' },
+  { id: 'en-ZA-LeahNeural', label: 'Leah (South Africa Female)', gender: 'Female' },
+  { id: 'en-ZA-LukeNeural', label: 'Luke (South Africa Male)', gender: 'Male' },
 ];
 
 const STYLES = [
@@ -110,6 +122,16 @@ export default function StoryUpload({ onUploadSuccess }: StoryUploadProps) {
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load default voice setting from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const defVoice = localStorage.getItem('storyforge_default_voice');
+      if (defVoice) {
+        setSelectedVoice(defVoice);
+      }
+    }
+  }, []);
 
   // Stop playing if voice changes
   useEffect(() => {
