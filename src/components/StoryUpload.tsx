@@ -53,6 +53,19 @@ const SUBTITLE_STYLES = [
   { id: 'minimalist', label: 'Minimalist', desc: 'Translucent dark bar backdrop, gray text', icon: '▫️' },
 ];
 
+const QUALITY_PRESETS = [
+  { id: 'normal', label: 'Normal (Fast)', desc: 'Ultra-fast SDXL generation (~2s / scene)', icon: '⚡' },
+  { id: 'high', label: 'High Quality', desc: 'High realism FLUX-Schnell (~20s / scene)', icon: '✨' },
+  { id: 'very_high', label: 'Very High Quality', desc: 'Absolute highest detail FLUX-Dev (~75s / scene)', icon: '🔮' },
+];
+
+const QUALITY_MODELS = {
+  normal: 'ByteDance/SDXL-Lightning-4step',
+  high: 'black-forest-labs/FLUX.1-schnell',
+  very_high: 'black-forest-labs/FLUX.1-dev',
+};
+
+
 const STYLE_PROMPTS: Record<string, string> = {
   cinematic: 'dramatic studio lighting, photorealistic movie feel, volumetric haze, movie atmosphere, highly detailed',
   anime: 'hand-drawn cell-shaded illustration art style, vibrant colors, detailed anime background, anime aesthetic',
@@ -101,6 +114,7 @@ export default function StoryUpload({ onUploadSuccess }: StoryUploadProps) {
   // Step 3: Generation & Voice Settings
   const [selectedVoice, setSelectedVoice] = useState('en-US-JennyNeural');
   const [subtitleStyle, setSubtitleStyle] = useState('classic');
+  const [selectedQuality, setSelectedQuality] = useState('normal'); // 'normal' | 'high' | 'very_high'
 
   // General Async States
   const [isUploading, setIsUploading] = useState(false);
@@ -330,7 +344,8 @@ Subtitles style: "${subtitleStyle}"
       finalScript += `\n${storyText.trim()}`;
 
       const name = `${storyTitle.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.txt`;
-      const res = await uploadStoryText(finalScript, name, selectedVoice);
+      const modelId = QUALITY_MODELS[selectedQuality as keyof typeof QUALITY_MODELS] || QUALITY_MODELS.normal;
+      const res = await uploadStoryText(finalScript, name, selectedVoice, modelId);
 
       // Reset form states
       handleClearForm();
@@ -590,6 +605,24 @@ Subtitles style: "${subtitleStyle}"
                       <span className={styles.ratioLabel}>{r.label}</span>
                       <span className={styles.ratioSub}>{r.sub}</span>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.inputLabel}>Image Generation Quality</label>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
+                {QUALITY_PRESETS.map((q) => (
+                  <div
+                    key={q.id}
+                    onClick={() => setSelectedQuality(q.id)}
+                    className={`${styles.presetCard} ${selectedQuality === q.id ? styles.presetCardActive : ''}`}
+                    style={{ minHeight: '80px', padding: '12px 16px' }}
+                  >
+                    <span className={styles.presetIcon}>{q.icon}</span>
+                    <span className={styles.presetTitle} style={{ fontSize: '14px', fontWeight: 700 }}>{q.label}</span>
+                    <span className={styles.presetDesc} style={{ fontSize: '11px', marginTop: '4px' }}>{q.desc}</span>
                   </div>
                 ))}
               </div>
