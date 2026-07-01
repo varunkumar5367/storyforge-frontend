@@ -24,11 +24,38 @@ import {
   editUserRole
 } from '@/utils/api';
 
+// ── Toast types ──────────────────────────────────────────────────────────────
+type Toast = { id: number; message: string; type: 'success' | 'error' | 'info' };
+type ConfirmState = { message: string; onConfirm: () => void } | null;
+
 export default function AdminPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'analytics' | 'server'>('users');
   const [username, setUsername] = useState<string | null>(null);
+
+  // ── Toast & Confirm system ─────────────────────────────────────────────────
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [confirmState, setConfirmState] = useState<ConfirmState>(null);
+  const toastCounter = useRef(0);
+
+  const showToast = (message: string, type: Toast['type'] = 'info') => {
+    const id = ++toastCounter.current;
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 4000);
+  };
+
+  const showConfirm = (message: string): Promise<boolean> =>
+    new Promise(resolve => {
+      setConfirmState({
+        message,
+        onConfirm: () => { setConfirmState(null); resolve(true); },
+      });
+    });
+
+  const handleConfirmCancel = () => {
+    setConfirmState(null);
+  };
   
   // Data states
   const [users, setUsers] = useState<UserResponse[]>([]);
@@ -166,36 +193,42 @@ export default function AdminPage() {
 
 
   const handleDeleteUser = async (userId: string, username: string) => {
-    if (!confirm(`Are you sure you want to delete user "${username}"?`)) return;
+    const ok = await showConfirm(`Delete user "${username}"? This cannot be undone.`);
+    if (!ok) return;
     try {
       await deleteAdminUser(userId);
       setUsers(users.filter(u => u.id !== userId));
       if (expandedUserId === userId) setExpandedUserId(null);
+      showToast(`User "${username}" deleted.`, 'success');
     } catch (err: any) {
-      alert(err.message || 'Failed to delete user.');
+      showToast(err.message || 'Failed to delete user.', 'error');
     }
   };
 
   const handleToggleUserStatus = async (userId: string, username: string) => {
     const action = users.find(u => u.id === userId)?.is_active ? 'deactivate' : 'activate';
-    if (!confirm(`Are you sure you want to ${action} user "${username}"?`)) return;
+    const ok = await showConfirm(`${action.charAt(0).toUpperCase() + action.slice(1)} user "${username}"?`);
+    if (!ok) return;
     try {
       const res = await toggleUserActive(userId);
       setUsers(users.map(u => u.id === userId ? { ...u, is_active: res.is_active } : u));
+      showToast(`User "${username}" ${action}d.`, 'success');
     } catch (err: any) {
-      alert(err.message || 'Failed to toggle user status.');
+      showToast(err.message || 'Failed to toggle user status.', 'error');
     }
   };
 
   const handleToggleUserRole = async (userId: string, username: string, currentRole: string) => {
     const targetRole = currentRole === 'admin' ? 'user' : 'admin';
     const actionWord = targetRole === 'admin' ? 'promote to admin' : 'demote to user';
-    if (!confirm(`Are you sure you want to ${actionWord} "${username}"?`)) return;
+    const ok = await showConfirm(`${actionWord.charAt(0).toUpperCase() + actionWord.slice(1)} "${username}"?`);
+    if (!ok) return;
     try {
       const res = await editUserRole(userId, targetRole);
       setUsers(users.map(u => u.id === userId ? { ...u, role: res.role } : u));
+      showToast(`"${username}" is now ${res.role}.`, 'success');
     } catch (err: any) {
-      alert(err.message || 'Failed to toggle user role.');
+      showToast(err.message || 'Failed to toggle user role.', 'error');
     }
   };
 
@@ -221,25 +254,22 @@ export default function AdminPage() {
   const handleSavePollenLimit = async (userId: string) => {
     const amt = parseFloat(editPollenVal);
     if (isNaN(amt) || amt < 0) {
-      alert("Please enter a valid positive decimal value.");
+      showToast('Please enter a valid positive decimal value.', 'error');
       return;
     }
     try {
       await editUserPollenCredits(userId, amt);
       setUsers(users.map(u => u.id === userId ? { ...u, pollen_balance: amt } : u));
-      alert("User pollen balance limit updated successfully.");
+      showToast('Choco balance updated successfully.', 'success');
     } catch (err: any) {
-      alert(err.message || "Failed to update pollen balance.");
+      showToast(err.message || 'Failed to update balance.', 'error');
     }
   };
 
   const handleReviewPollenRequest = async (requestId: string, status: 'approved' | 'denied') => {
     try {
       await reviewPollenRequest(requestId, status);
-      // Update local request state
       setAllRequests(allRequests.map(r => r.id === requestId ? { ...r, status } : r));
-      
-      // If approved, update user's local pollen balance in the UI
       if (status === 'approved') {
         const reqObj = allRequests.find(r => r.id === requestId);
         if (reqObj) {
@@ -248,19 +278,24 @@ export default function AdminPage() {
             setEditPollenVal(((users.find(u => u.id === reqObj.user_id)?.pollen_balance ?? 20.0) + reqObj.amount).toString());
           }
         }
+        showToast('Credit request approved ✓', 'success');
+      } else {
+        showToast('Credit request denied.', 'info');
       }
     } catch (err: any) {
-      alert(err.message || 'Failed to review credit request.');
+      showToast(err.message || 'Failed to review credit request.', 'error');
     }
   };
 
   const handleDeleteJob = async (jobId: string) => {
-    if (!confirm(`Are you sure you want to delete job "${jobId}" and all its output files?`)) return;
+    const ok = await showConfirm(`Delete job "${jobId}" and all its output files?`);
+    if (!ok) return;
     try {
       await deleteJob(jobId);
       setExpandedUserJobs(expandedUserJobs.filter(j => j.job_id !== jobId));
+      showToast('Job deleted.', 'success');
     } catch (err: any) {
-      alert(err.message || 'Failed to delete job.');
+      showToast(err.message || 'Failed to delete job.', 'error');
     }
   };
 
@@ -1261,7 +1296,7 @@ export default function AdminPage() {
                                   <button 
                                     onClick={() => {
                                       navigator.clipboard.writeText(f.ffmpeg_cmd || '');
-                                      alert('Command copied to clipboard!');
+                                      showToast('Command copied to clipboard!', 'success');
                                     }}
                                     style={{
                                       padding: '2px 8px',
@@ -1303,7 +1338,7 @@ export default function AdminPage() {
                                   <button 
                                     onClick={() => {
                                       navigator.clipboard.writeText(f.ffmpeg_stderr || '');
-                                      alert('Stderr log copied to clipboard!');
+                                      showToast('Stderr log copied to clipboard!', 'success');
                                     }}
                                     style={{
                                       padding: '2px 8px',
@@ -1518,11 +1553,11 @@ export default function AdminPage() {
                   onClick={async () => {
                     try {
                       await updateServerSettings(maxTasksInput, maxUsersInput);
-                      alert('Server settings saved successfully.');
+                      showToast('Server settings saved successfully.', 'success');
                       const updated = await fetchServerStatus();
                       setServerStatus(updated);
                     } catch (err: any) {
-                      alert(err.message || 'Failed to update server settings.');
+                      showToast(err.message || 'Failed to update server settings.', 'error');
                     }
                   }}
                   style={{
@@ -1581,13 +1616,15 @@ export default function AdminPage() {
                     <div style={{ display: 'flex', gap: '12px', alignSelf: isMobile ? 'flex-end' : 'center' }}>
                       <button
                         onClick={async () => {
-                          if (!confirm('Ignore this wake request?')) return;
+                          const ok = await showConfirm('Ignore this wake request?');
+                          if (!ok) return;
                           try {
                             await reviewWakeRequest(req.id, 'ignored');
+                            showToast('Wake request ignored.', 'info');
                             const updated = await fetchServerStatus();
                             setServerStatus(updated);
                           } catch (err: any) {
-                            alert(err.message || 'Failed to review request.');
+                            showToast(err.message || 'Failed to review request.', 'error');
                           }
                         }}
                         style={{
@@ -1607,11 +1644,11 @@ export default function AdminPage() {
                         onClick={async () => {
                           try {
                             await reviewWakeRequest(req.id, 'accepted');
-                            alert('Wake request approved. Ensure you start the uvicorn backend and Cloudflare Quick Tunnel on your laptop.');
+                            showToast('Wake request approved! Start uvicorn + Cloudflare tunnel on your laptop.', 'success');
                             const updated = await fetchServerStatus();
                             setServerStatus(updated);
                           } catch (err: any) {
-                            alert(err.message || 'Failed to approve request.');
+                            showToast(err.message || 'Failed to approve request.', 'error');
                           }
                         }}
                         style={{
@@ -1636,6 +1673,104 @@ export default function AdminPage() {
           </div>
         </div>
       )}
+
+      {/* ── Toast Notifications ─────────────────────────────────────────── */}
+      <div style={{
+        position: 'fixed', bottom: '24px', right: '24px',
+        display: 'flex', flexDirection: 'column', gap: '10px',
+        zIndex: 9999, pointerEvents: 'none',
+      }}>
+        {toasts.map(t => (
+          <div key={t.id} style={{
+            pointerEvents: 'auto',
+            display: 'flex', alignItems: 'center', gap: '10px',
+            padding: '12px 18px',
+            borderRadius: '10px',
+            backdropFilter: 'blur(16px)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.45)',
+            border: `1px solid ${
+              t.type === 'success' ? 'rgba(16,185,129,0.35)'
+              : t.type === 'error'   ? 'rgba(239,68,68,0.35)'
+              : 'rgba(139,92,246,0.35)'
+            }`,
+            background: t.type === 'success' ? 'rgba(16,185,129,0.12)'
+              : t.type === 'error' ? 'rgba(239,68,68,0.12)'
+              : 'rgba(139,92,246,0.12)',
+            color: t.type === 'success' ? 'var(--accent-green)'
+              : t.type === 'error' ? 'var(--accent-red)'
+              : 'var(--accent-purple)',
+            fontWeight: 600,
+            fontSize: '14px',
+            minWidth: '260px',
+            maxWidth: '400px',
+            animation: 'slideInRight 0.25s ease',
+          }}>
+            <span style={{ fontSize: '18px' }}>
+              {t.type === 'success' ? '✅' : t.type === 'error' ? '❌' : 'ℹ️'}
+            </span>
+            <span style={{ flex: 1, color: 'var(--text-primary)' }}>{t.message}</span>
+            <span
+              onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))}
+              style={{ cursor: 'pointer', opacity: 0.5, fontSize: '16px', lineHeight: 1 }}
+            >×</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ── Confirm Dialog ──────────────────────────────────────────────── */}
+      {confirmState && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 10000,
+          background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <div className="glass" style={{
+            padding: '32px 28px', borderRadius: '16px',
+            border: '1px solid var(--border-color)',
+            maxWidth: '420px', width: '90%',
+            display: 'flex', flexDirection: 'column', gap: '20px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px' }}>
+              <span style={{ fontSize: '26px', lineHeight: 1 }}>⚠️</span>
+              <p style={{ fontSize: '15px', color: 'var(--text-primary)', fontWeight: 500, margin: 0, lineHeight: 1.5 }}>
+                {confirmState.message}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button
+                onClick={handleConfirmCancel}
+                style={{
+                  padding: '9px 20px', borderRadius: '8px',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1px solid var(--border-color)',
+                  color: 'var(--text-primary)', fontWeight: 600,
+                  fontSize: '14px', cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmState.onConfirm}
+                style={{
+                  padding: '9px 20px', borderRadius: '8px',
+                  background: 'var(--accent-red)',
+                  border: 'none', color: '#fff',
+                  fontWeight: 700, fontSize: '14px', cursor: 'pointer',
+                }}
+              >
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes slideInRight {
+          from { opacity: 0; transform: translateX(40px); }
+          to   { opacity: 1; transform: translateX(0); }
+        }
+      `}</style>
     </div>
   );
 }
