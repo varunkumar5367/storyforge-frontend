@@ -20,13 +20,15 @@ import {
   SystemAnalytics,
   fetchServerStatus,
   updateServerSettings,
-  reviewWakeRequest
+  reviewWakeRequest,
+  editUserRole
 } from '@/utils/api';
 
 export default function AdminPage() {
   const router = useRouter();
   const [authorized, setAuthorized] = useState(false);
   const [activeTab, setActiveTab] = useState<'users' | 'logs' | 'analytics' | 'server'>('users');
+  const [username, setUsername] = useState<string | null>(null);
   
   // Data states
   const [users, setUsers] = useState<UserResponse[]>([]);
@@ -73,6 +75,8 @@ export default function AdminPage() {
     if (typeof window !== 'undefined') {
       const token = localStorage.getItem('storyforge_token');
       const role = localStorage.getItem('storyforge_role');
+      const uname = localStorage.getItem('storyforge_username');
+      setUsername(uname);
       if (!token) {
         router.push('/login');
       } else if (role !== 'admin') {
@@ -180,6 +184,18 @@ export default function AdminPage() {
       setUsers(users.map(u => u.id === userId ? { ...u, is_active: res.is_active } : u));
     } catch (err: any) {
       alert(err.message || 'Failed to toggle user status.');
+    }
+  };
+
+  const handleToggleUserRole = async (userId: string, username: string, currentRole: string) => {
+    const targetRole = currentRole === 'admin' ? 'user' : 'admin';
+    const actionWord = targetRole === 'admin' ? 'promote to admin' : 'demote to user';
+    if (!confirm(`Are you sure you want to ${actionWord} "${username}"?`)) return;
+    try {
+      const res = await editUserRole(userId, targetRole);
+      setUsers(users.map(u => u.id === userId ? { ...u, role: res.role } : u));
+    } catch (err: any) {
+      alert(err.message || 'Failed to toggle user role.');
     }
   };
 
@@ -505,44 +521,66 @@ export default function AdminPage() {
                         </div>
                       </td>
                       <td style={{ padding: '18px 24px', textAlign: 'right' }} onClick={(e) => e.stopPropagation()}>
-                        {user.role !== 'admin' ? (
-                          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          {/* Promote/Demote to/from Admin (Only the main admin varun5367 can do this, and cannot change themselves) */}
+                          {username === 'varun5367' && user.username !== 'varun5367' && (
                             <button
-                              onClick={() => handleToggleUserStatus(user.id, user.username)}
+                              onClick={() => handleToggleUserRole(user.id, user.username, user.role)}
                               style={{
                                 padding: '6px 12px',
                                 borderRadius: '6px',
-                                backgroundColor: user.is_active ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
-                                border: user.is_active ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(16, 185, 129, 0.2)',
-                                color: user.is_active ? 'var(--accent-red)' : 'var(--accent-green)',
+                                backgroundColor: user.role === 'admin' ? 'rgba(239, 68, 68, 0.1)' : 'rgba(139, 92, 246, 0.1)',
+                                border: user.role === 'admin' ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(139, 92, 246, 0.2)',
+                                color: user.role === 'admin' ? 'var(--accent-red)' : 'var(--accent-purple)',
                                 cursor: 'pointer',
                                 fontSize: '13px',
                                 fontWeight: 600,
                                 transition: 'var(--transition-fast)'
                               }}
                             >
-                              {user.is_active ? 'Deactivate' : 'Activate'}
+                              {user.role === 'admin' ? 'Demote' : 'Make Admin'}
                             </button>
-                            <button
-                              onClick={() => handleDeleteUser(user.id, user.username)}
-                              style={{
-                                padding: '6px 12px',
-                                borderRadius: '6px',
-                                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.2)',
-                                color: 'var(--accent-red)',
-                                cursor: 'pointer',
-                                fontSize: '13px',
-                                fontWeight: 600,
-                                transition: 'var(--transition-fast)'
-                              }}
-                            >
-                              Delete User
-                            </button>
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic' }}>System Protected</span>
-                        )}
+                          )}
+
+                          {user.username !== 'varun5367' ? (
+                            <>
+                              <button
+                                onClick={() => handleToggleUserStatus(user.id, user.username)}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '6px',
+                                  backgroundColor: user.is_active ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)',
+                                  border: user.is_active ? '1px solid rgba(239, 68, 68, 0.2)' : '1px solid rgba(16, 185, 129, 0.2)',
+                                  color: user.is_active ? 'var(--accent-red)' : 'var(--accent-green)',
+                                  cursor: 'pointer',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  transition: 'var(--transition-fast)'
+                                }}
+                              >
+                                {user.is_active ? 'Deactivate' : 'Activate'}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(user.id, user.username)}
+                                style={{
+                                  padding: '6px 12px',
+                                  borderRadius: '6px',
+                                  backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                                  border: '1px solid rgba(239, 68, 68, 0.2)',
+                                  color: 'var(--accent-red)',
+                                  cursor: 'pointer',
+                                  fontSize: '13px',
+                                  fontWeight: 600,
+                                  transition: 'var(--transition-fast)'
+                                }}
+                              >
+                                Delete User
+                              </button>
+                            </>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '13px', fontStyle: 'italic' }}>Main Admin (Protected)</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
 

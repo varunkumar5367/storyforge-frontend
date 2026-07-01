@@ -59,6 +59,10 @@ export interface JobOutputLinks {
 const BASE_URL_DYNAMIC = {
   toString() {
     if (typeof window !== 'undefined') {
+      const offline = localStorage.getItem('storyforge_server_offline') === 'true';
+      if (offline) {
+        return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+      }
       const stored = localStorage.getItem('storyforge_api_url');
       if (stored === 'http://127.0.0.1:8000' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
         localStorage.removeItem('storyforge_api_url');
@@ -71,6 +75,10 @@ const BASE_URL_DYNAMIC = {
   replace(searchValue: string | RegExp, replaceValue: string | ((substring: string, ...args: any[]) => string)) {
     const url = typeof window !== 'undefined'
       ? (() => {
+          const offline = localStorage.getItem('storyforge_server_offline') === 'true';
+          if (offline) {
+            return process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000';
+          }
           const stored = localStorage.getItem('storyforge_api_url');
           if (stored === 'http://127.0.0.1:8000' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
             localStorage.removeItem('storyforge_api_url');
@@ -836,4 +844,23 @@ export async function reviewWakeRequest(requestId: string, status: 'accepted' | 
   }
   return response.json();
 }
+
+/**
+ * Updates a user's role (Admin only, promote to admin requires main admin varun5367)
+ */
+export async function editUserRole(userId: string, role: string): Promise<{ success: boolean; role: string }> {
+  const response = await fetch(`${BASE_URL}/api/admin/users/${userId}/role`, {
+    method: 'PUT',
+    headers: getAuthHeaders({
+      'Content-Type': 'application/json',
+    }),
+    body: JSON.stringify({ role }),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to update user role.');
+  }
+  return response.json();
+}
+
 

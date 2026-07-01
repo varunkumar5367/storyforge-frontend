@@ -11,10 +11,12 @@ export default function DashboardHome() {
   const [pollen, setPollen] = useState<PollenBalanceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [username, setUsername] = useState<string | null>(null);
+  const [role, setRole] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       setUsername(localStorage.getItem('storyforge_username'));
+      setRole(localStorage.getItem('storyforge_role'));
     }
   }, []);
 
@@ -224,11 +226,13 @@ export default function DashboardHome() {
           <span className={styles.quickLabel}>History</span>
           <span className={styles.quickDesc}>Browse all productions</span>
         </Link>
-        <Link href="/accuracy" className={`glass-interactive ${styles.quickCard}`}>
-          <span className={styles.quickIcon}>📊</span>
-          <span className={styles.quickLabel}>Accuracy</span>
-          <span className={styles.quickDesc}>Score video fidelity</span>
-        </Link>
+        {role === 'admin' && (
+          <Link href="/accuracy" className={`glass-interactive ${styles.quickCard}`}>
+            <span className={styles.quickIcon}>📊</span>
+            <span className={styles.quickLabel}>Accuracy</span>
+            <span className={styles.quickDesc}>Score video fidelity</span>
+          </Link>
+        )}
         <Link href="/settings" className={`glass-interactive ${styles.quickCard}`}>
           <span className={styles.quickIcon}>⚙️</span>
           <span className={styles.quickLabel}>Settings</span>
