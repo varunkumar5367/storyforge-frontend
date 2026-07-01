@@ -39,7 +39,28 @@ const STYLES = [
   { id: 'watercolor', label: 'Watercolor', desc: 'Soft pastel wash, organic textured artistic look', icon: '🖌️' },
   { id: 'pixel', label: 'Pixel Art', desc: 'Retro 8-bit / 16-bit video game aesthetic', icon: '👾' },
   { id: 'pixar', label: '3D Pixar', desc: 'Volumetric studio lighting, stylized clay modeling', icon: '🎭' },
+  { id: 'comic', label: 'Comic Book', desc: 'Bold ink lines, halftone shading, vivid flat colors', icon: '💥' },
+  { id: 'horror', label: 'Dark Horror', desc: 'Gritty desaturated tones, eerie shadows, unsettling atmosphere', icon: '🕯️' },
+  { id: 'fantasy', label: 'Epic Fantasy', desc: 'Magical golden light, lush medieval landscapes, dragons & lore', icon: '🧙' },
+  { id: 'scifi', label: 'Sci-Fi Space', desc: 'Galactic nebula backdrops, chrome surfaces, cosmic scale', icon: '🚀' },
+  { id: 'vintage', label: 'Vintage Film', desc: 'Sepia grain, film burn, 1940s old-school photograph', icon: '📷' },
+  { id: 'noir', label: 'Film Noir', desc: 'High-contrast monochrome, moody shadows, detective drama', icon: '🕵️' },
 ];
+
+const STYLE_PROMPTS: Record<string, string> = {
+  cinematic: 'dramatic studio lighting, photorealistic movie feel, volumetric haze, movie atmosphere, highly detailed',
+  anime: 'hand-drawn cell-shaded illustration art style, vibrant colors, detailed anime background, anime aesthetic',
+  cyberpunk: 'neon lighting, high-tech dark futuristic ambiance, glowing reflections, synthwave aesthetic, rainy night',
+  watercolor: 'soft pastel wash, organic textured artistic look, flowing pigments, elegant watercolor bleed, hand-painted',
+  pixel: 'retro 8-bit / 16-bit video game aesthetic, pixelated texture, vibrant colors, pixel art scene',
+  pixar: 'volumetric studio lighting, stylized clay modeling, 3D render style, cute cartoon characters, smooth shaders',
+  comic: 'bold black ink outlines, halftone dot shading, vivid flat primary colors, classic comic book panel style',
+  horror: 'gritty desaturated color palette, deep eerie shadows, unsettling atmosphere, dim flickering candlelight, dark horror film',
+  fantasy: 'epic fantasy art, magical golden hour light, lush medieval environment, intricate world-building detail, painterly',
+  scifi: 'sci-fi space setting, galactic nebula backdrop, chrome metallic surfaces, bioluminescent glow, cinematic cosmic scale',
+  vintage: 'sepia toned aged photograph, film grain texture, 1940s old-school style, vignette edges, nostalgic warm light',
+  noir: 'high contrast monochrome black and white, moody dramatic shadows, venetian blind light streaks, classic film noir detective drama',
+};
 
 const RATIOS = [
   { id: '16:9', label: 'Landscape 16:9', sub: 'YouTube / Widescreen', w: 14, h: 8 },
@@ -54,9 +75,9 @@ const SUBTITLE_STYLES = [
 ];
 
 const QUALITY_PRESETS = [
-  { id: 'normal', label: 'Normal (Fast)', desc: 'Ultra-fast SDXL generation (~2s / scene)', icon: '⚡' },
-  { id: 'high', label: 'High Quality', desc: 'High realism FLUX-Schnell (~20s / scene)', icon: '✨' },
-  { id: 'very_high', label: 'Very High Quality', desc: 'Absolute highest detail FLUX-Dev (~75s / scene)', icon: '🔮' },
+  { id: 'normal', label: 'Normal (Fast)', desc: 'Ultra-fast SDXL generation (~2s / scene)', icon: '⚡', chocoPerScene: 1 },
+  { id: 'high', label: 'High Quality', desc: 'High realism FLUX-Schnell (~20s / scene)', icon: '✨', chocoPerScene: 2 },
+  { id: 'very_high', label: 'Very High Quality', desc: 'Absolute highest detail FLUX-Dev (~75s / scene)', icon: '🔮', chocoPerScene: 3 },
 ];
 
 const QUALITY_MODELS = {
@@ -65,19 +86,12 @@ const QUALITY_MODELS = {
   very_high: 'black-forest-labs/FLUX.1-dev',
 };
 
-
-const STYLE_PROMPTS: Record<string, string> = {
-  cinematic: 'dramatic studio lighting, photorealistic movie feel, volumetric haze, movie atmosphere, highly detailed',
-  anime: 'hand-drawn cell-shaded illustration art style, vibrant colors, detailed anime background, anime aesthetic',
-  cyberpunk: 'neon lighting, high-tech dark futuristic ambiance, glowing reflections, synthwave aesthetic, rainy night',
-  watercolor: 'soft pastel wash, organic textured artistic look, flowing pigments, elegant watercolor bleed, hand-painted',
-  pixel: 'retro 8-bit / 16-bit video game aesthetic, pixelated texture, vibrant colors, pixel art scene',
-  pixar: 'volumetric studio lighting, stylized clay modeling, 3D render style, cute cartoon characters, smooth shaders',
-};
+const QUALITY_CHOCO_RATE: Record<string, number> = { normal: 1, high: 2, very_high: 3 };
 
 interface StoryUploadProps {
   onUploadSuccess: (jobId: string) => void;
 }
+
 
 const MAX_QUOTA = 20;
 
@@ -375,8 +389,13 @@ Subtitles style: "${subtitleStyle}"
   };
 
   const creditsAvailable = imagesLeft ?? MAX_QUOTA;
-  // Only enforce quota for non-admin users
-  const quotaExceeded = !isAdmin && estimatedScenes > 0 && estimatedScenes > creditsAvailable;
+  // Choco cost per scene varies by quality tier
+  const chocoRate = QUALITY_CHOCO_RATE[selectedQuality] ?? 1;
+  const chocoCost = estimatedScenes * chocoRate;
+  // Quota check: only block for non-admin users on Step 2 when quality is selected
+  const chocoInsufficient = !isAdmin && estimatedScenes > 0 && chocoCost > creditsAvailable;
+  // Keep step 1 unblocked — only step 2 Continue is gated by balance
+  const quotaExceeded = false; // removed from step 1
 
   const isStep1Valid = storyTitle.trim() && storyText.trim();
 
@@ -526,17 +545,6 @@ Subtitles style: "${subtitleStyle}"
                 <span className={styles.estimationLabel}>Est. Video Length</span>
                 <span className={styles.estimationValue}>{formatEstLength(wordCount)}</span>
               </div>
-              {wordCount > 0 && !isAdmin && (
-                <div className={styles.estimationItem}>
-                  <span className={styles.estimationLabel}>Credits Required</span>
-                  <span
-                    className={styles.estimationValue}
-                    style={{ color: quotaExceeded ? 'var(--accent-red)' : 'var(--accent-green)' }}
-                  >
-                    {estimatedScenes}
-                  </span>
-                </div>
-              )}
             </div>
 
             {/* Actions for Step 1 */}
@@ -553,9 +561,7 @@ Subtitles style: "${subtitleStyle}"
                 type="button"
                 onClick={() => setStep(2)}
                 className={styles.continueBtn}
-                disabled={!isStep1Valid || quotaExceeded}
-                title={quotaExceeded ? 'Insufficient credits for this project size' : ''}
-                style={quotaExceeded ? { cursor: 'not-allowed' } : {}}
+                disabled={!isStep1Valid}
               >
                 Continue →
               </button>
@@ -639,6 +645,46 @@ Subtitles style: "${subtitleStyle}"
               />
             </div>
 
+            {/* Choco Cost Summary + quota check for Step 2 */}
+            {!isAdmin && estimatedScenes > 0 && (
+              <div style={{
+                borderRadius: '12px',
+                padding: '14px 18px',
+                background: chocoInsufficient
+                  ? 'rgba(239,68,68,0.08)'
+                  : 'rgba(139,92,246,0.07)',
+                border: `1px solid ${chocoInsufficient ? 'rgba(239,68,68,0.3)' : 'rgba(139,92,246,0.25)'}`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+                flexWrap: 'wrap',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span style={{ fontSize: '22px' }}>🍫</span>
+                  <div>
+                    <div style={{ fontWeight: 700, fontSize: '14px', color: chocoInsufficient ? 'var(--accent-red)' : 'var(--text-primary)' }}>
+                      {chocoInsufficient ? 'Insufficient Choco Balance' : 'Choco Cost Breakdown'}
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                      {estimatedScenes} scenes × {chocoRate} 🍫/scene ({selectedQuality.replace('_', ' ')}) = <strong style={{ color: chocoInsufficient ? 'var(--accent-red)' : 'var(--accent-purple)' }}>{chocoCost} 🍫 required</strong>
+                    </div>
+                    {chocoInsufficient && (
+                      <div style={{ fontSize: '11px', color: 'var(--accent-orange)', marginTop: '4px' }}>
+                        You have {creditsAvailable} 🍫 available. Reduce story length or choose a lower quality tier.
+                      </div>
+                    )}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>Balance: </span>
+                  <span style={{ fontWeight: 800, fontSize: '16px', color: chocoInsufficient ? 'var(--accent-red)' : 'var(--accent-green)' }}>
+                    {creditsAvailable} 🍫
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Actions for Step 2 */}
             <div className={styles.footerActions}>
               <button
@@ -652,6 +698,9 @@ Subtitles style: "${subtitleStyle}"
                 type="button"
                 onClick={() => setStep(3)}
                 className={styles.continueBtn}
+                disabled={chocoInsufficient}
+                title={chocoInsufficient ? `Need ${chocoCost} 🍫 but you only have ${creditsAvailable}` : ''}
+                style={chocoInsufficient ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
               >
                 Continue →
               </button>
