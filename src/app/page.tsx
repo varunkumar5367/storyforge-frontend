@@ -181,14 +181,14 @@ export default function DashboardHome() {
             </svg>
           </div>
           <div className={styles.statContent}>
-            <span className={styles.statTitle}>Pollen Balance</span>
+            <span className={styles.statTitle}>🍫 Choco Balance</span>
             <span className={styles.statValue}>
-              {pollen?.success && pollen.pollen !== null ? pollen.pollen : '—'}
+              {pollen?.success && pollen.pollen !== null ? Math.round(pollen.pollen) : '—'}
             </span>
             <span className={styles.statSub}>
               {pollen?.success && pollen.images_left !== null
                 ? `~${pollen.images_left} AI images left`
-                : 'Free Tier Unlimited'}
+                : 'Unlimited'}
             </span>
           </div>
           <div className={styles.statAccent} style={{ background: 'var(--accent-cyan)' }} />

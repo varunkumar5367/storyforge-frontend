@@ -715,7 +715,7 @@ Subtitles style: "${subtitleStyle}"
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d="M12 2v2M12 18v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
                         </svg>
-                        Pollen Balance
+                        Choco Balance
                       </span>
                       <span className={styles.pollenError}>Setup Required</span>
                     </div>
@@ -729,9 +729,9 @@ Subtitles style: "${subtitleStyle}"
                           <circle cx="12" cy="12" r="10"/>
                           <path d="m9 12 2 2 4-4"/>
                         </svg>
-                        Pollen Balance
+                        Choco Balance
                       </span>
-                      <span className={styles.pollenValueGreen}>{pollen?.toFixed(4)} pollen</span>
+                      <span className={styles.pollenValueGreen}>{pollen !== null ? Math.round(pollen) : 0} 🍫 Choco</span>
                     </div>
                     {imagesLeft !== null && (
                       <div className={styles.pollenInfo} style={{ marginTop: '4px' }}>

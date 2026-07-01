@@ -579,10 +579,10 @@ export default function AdminPage() {
                                 </div>
                               </div>
 
-                              {/* Edit Pollen Credits */}
+                              {/* Edit Choco Credits */}
                               <div className="glass" style={{ flex: '1 1 350px', padding: '16px 20px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'rgba(255,255,255,0.01)' }}>
                                 <h4 style={{ margin: '0 0 8px', fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>
-                                  Pollen Quota Limit
+                                  Choco Quota Limit
                                 </h4>
                                 <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '0 0 12px' }}>
                                   Override the hourly image generation budget for this user account.
@@ -630,12 +630,12 @@ export default function AdminPage() {
                                   </button>
                                 </div>
                                 <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginTop: '8px' }}>
-                                  Current Limit: <strong style={{ color: 'var(--accent-purple)' }}>{(user.pollen_balance ?? 20.0).toFixed(4)}</strong>
+                                  Current Limit: <strong style={{ color: 'var(--accent-purple)' }}>{Math.round(user.pollen_balance ?? 20.0)} Choco</strong>
                                 </div>
                               </div>
                             </div>
 
-                            {/* Pollen Requests List */}
+                            {/* Choco Requests List */}
                             {userRequests.length > 0 && (
                               <div>
                                 <h4 style={{ margin: '0 0 12px', fontSize: '14px', textTransform: 'uppercase', color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>
@@ -964,7 +964,7 @@ export default function AdminPage() {
                 {/* Credit Consumption Card */}
                 <div className="glass" style={{ padding: '20px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)', background: 'rgba(255,255,255,0.01)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
-                    <h3 style={{ margin: 0, fontSize: '15px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>Pollen Credits</h3>
+                    <h3 style={{ margin: 0, fontSize: '15px', textTransform: 'uppercase', color: 'var(--text-secondary)', fontWeight: 600, letterSpacing: '0.5px' }}>Choco Credits</h3>
                     <span style={{ fontSize: '24px' }}>🪙</span>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>

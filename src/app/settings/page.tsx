@@ -237,13 +237,13 @@ export default function SettingsPage() {
           </h3>
           <div className={styles.cardBody}>
             <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-              Illustrations are powered by the Pollinations.ai decentralized visual cluster.
+              Illustrations are powered by local GPU acceleration or cloud inference fallback.
             </p>
 
             {/* ── Quota card ── */}
             <div className={styles.quotaCard}>
               <div className={styles.quotaHeader}>
-                <span className={styles.quotaLabel}>POLLEN CREDITS</span>
+                <span className={styles.quotaLabel}>CHOCO CREDITS</span>
                 {checkingPollen && (
                   <svg className="animate-spin-fast" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2.5">
                     <circle cx="12" cy="12" r="10" strokeOpacity="0.25"/>
@@ -266,17 +266,17 @@ export default function SettingsPage() {
                   {checkingPollen 
                     ? '–' 
                     : (rawPollen < 1 && rawPollen > 0) || !Number.isInteger(rawPollen) 
-                      ? rawPollen.toFixed(4) 
-                      : rawPollen}
+                      ? Math.round(rawPollen) 
+                      : Math.round(rawPollen)}
                 </span>
                 {!isAdmin && (
                   <>
                     <span className={styles.quotaCreditsSlash}>/</span>
-                    <span className={styles.quotaCreditsMax}>{quotaLimit} Credits Available</span>
+                    <span className={styles.quotaCreditsMax}>{quotaLimit} Choco Available</span>
                   </>
                 )}
                 {isAdmin && (
-                  <span className={styles.quotaCreditsMax}> Credits Available</span>
+                  <span className={styles.quotaCreditsMax}> Choco Available</span>
                 )}
               </div>
 

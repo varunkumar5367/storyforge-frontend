@@ -234,7 +234,7 @@ export default function ProfilePage() {
       setPollenRequests([res.request, ...pollenRequests]);
       setReqAmount('');
       setReqMessage('');
-      setRequestSuccessMsg("Pollen credits request submitted to admin!");
+      setRequestSuccessMsg("Choco credits request submitted to admin!");
       setTimeout(() => setRequestSuccessMsg(null), 4000);
     } catch (err: any) {
       alert(err.message || "Failed to submit pollen request.");
@@ -351,7 +351,7 @@ export default function ProfilePage() {
           User Profile
         </h1>
         <p style={{ color: 'var(--text-secondary)', fontSize: '15px' }}>
-          Manage your personal identity details, security credentials, and pollen credit requests.
+          Manage your personal identity details, security credentials, and Choco credit requests.
         </p>
       </div>
 
@@ -918,7 +918,7 @@ export default function ProfilePage() {
             )}
           </div>
 
-          {/* Request Pollen Credits (Non-admins only) */}
+          {/* Request Choco Credits (Non-admins only) */}
           {user?.role !== 'admin' && (
             <div className="glass" style={{ padding: '24px', borderRadius: 'var(--border-radius-lg)', border: '1px solid var(--border-color)' }}>
               <h3 style={{ margin: '0 0 12px', fontSize: '16px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -938,7 +938,7 @@ export default function ProfilePage() {
                   fontSize: '12px',
                   lineHeight: '1.4'
                 }}>
-                  🔒 <strong>Feature Locked</strong>: You must fully complete your profile (Full Name, Display Name, Email) to request pollen credits from the administrator.
+                  🔒 <strong>Feature Locked</strong>: You must fully complete your profile (Full Name, Display Name, Email) to request Choco credits from the administrator.
                 </div>
               ) : (
                 <form onSubmit={handlePollenRequestSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -1040,7 +1040,7 @@ export default function ProfilePage() {
                         backgroundColor: 'rgba(255,255,255,0.01)'
                       }}>
                         <div>
-                          <div style={{ fontWeight: 600 }}>+{req.amount} Credits</div>
+                          <div style={{ fontWeight: 600 }}>+{req.amount} Choco</div>
                           <div style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
                             {new Date(req.created_at).toLocaleDateString()}
                           </div>
