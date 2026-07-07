@@ -37,7 +37,20 @@ export default function JobDetails({ jobId, onStatusUpdate }: JobDetailsProps) {
   const [links, setLinks] = useState<JobOutputLinks | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isServerOffline, setIsServerOffline] = useState(false);
   const pollTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const checkOffline = () => {
+      setIsServerOffline(localStorage.getItem('storyforge_server_offline') === 'true');
+    };
+    checkOffline();
+    window.addEventListener('server-status-changed', checkOffline);
+    return () => {
+      window.removeEventListener('server-status-changed', checkOffline);
+    };
+  }, []);
 
   // Time remaining estimation state
   const [timeRemaining, setTimeRemaining] = useState<number | null>(null);
@@ -353,27 +366,30 @@ export default function JobDetails({ jobId, onStatusUpdate }: JobDetailsProps) {
                 type="button"
                 className={`${styles.actionBtn} ${styles.resumeBtn}`}
                 onClick={handleResume}
-                disabled={togglingPause}
+                disabled={togglingPause || isServerOffline}
+                title={isServerOffline ? "Backend Server is Offline" : ""}
               >
-                ▶ Resume Generation
+                {isServerOffline ? "▶ Resume Disabled (Server Offline)" : "▶ Resume Generation"}
               </button>
             ) : job.status === 'failed' ? (
               <button
                 type="button"
                 className={`${styles.actionBtn} ${styles.resumeBtn}`}
                 onClick={handleResume}
-                disabled={togglingPause}
+                disabled={togglingPause || isServerOffline}
+                title={isServerOffline ? "Backend Server is Offline" : ""}
               >
-                🔄 Resume Failed Job
+                {isServerOffline ? "🔄 Resume Disabled (Server Offline)" : "🔄 Resume Failed Job"}
               </button>
             ) : (
               <button
                 type="button"
                 className={`${styles.actionBtn} ${styles.pauseBtn}`}
                 onClick={handlePause}
-                disabled={togglingPause}
+                disabled={togglingPause || isServerOffline}
+                title={isServerOffline ? "Backend Server is Offline" : ""}
               >
-                ⏸ Pause Generation
+                {isServerOffline ? "⏸ Pause Disabled (Server Offline)" : "⏸ Pause Generation"}
               </button>
             )}
           </div>
@@ -687,7 +703,7 @@ export default function JobDetails({ jobId, onStatusUpdate }: JobDetailsProps) {
                     <button
                       type="button"
                       onClick={handleRegenerateThumbnail}
-                      disabled={regeneratingThumbnail}
+                      disabled={regeneratingThumbnail || isServerOffline}
                       className={styles.editorSaveBtn}
                     >
                       {regeneratingThumbnail ? (
@@ -698,6 +714,8 @@ export default function JobDetails({ jobId, onStatusUpdate }: JobDetailsProps) {
                           </svg>
                           Saving & Regenerating...
                         </>
+                      ) : isServerOffline ? (
+                        '💾 Save Disabled (Server Offline)'
                       ) : (
                         '💾 Save Changes'
                       )}

@@ -208,7 +208,8 @@ function AccuracyPageInner() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listAllJobs()
+    const isAdmin = typeof window !== 'undefined' && localStorage.getItem('storyforge_role') === 'admin';
+    listAllJobs(100, isAdmin)
       .then(data => {
         const completed = data.jobs.filter(j => j.status === 'completed');
         setJobs(completed);
@@ -298,7 +299,7 @@ function AccuracyPageInner() {
             >
               {jobs.map(j => (
                 <option key={j.job_id} value={j.job_id} style={{ background: '#1a1a2e' }}>
-                  {j.story_filename || 'Untitled'} — {j.job_id.substring(0, 8)}...
+                  {j.story_filename || 'Untitled'} — {j.job_id.substring(0, 8)}... {j.username ? `(${j.username})` : ''}
                 </option>
               ))}
             </select>

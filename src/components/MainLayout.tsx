@@ -22,11 +22,21 @@ export default function MainLayout({ children }: MainLayoutProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Notification states
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadNotificationsCount, setUnreadNotificationsCount] = useState(0);
+  const [notifDropdownOpen, setNotifDropdownOpen] = useState(false);
+  const notifDropdownRef = useRef<HTMLDivElement>(null);
+
   // Server Waking & Status states
   const [serverState, setServerState] = useState<'checking' | 'online' | 'waking' | 'timeout'>('checking');
   const [countdown, setCountdown] = useState(120);
   const [wakeMessage, setWakeMessage] = useState('');
   const [sendingWake, setSendingWake] = useState(false);
+
+  // Pollen/Choco request notification states
+  const [activeNotification, setActiveNotification] = useState<{message: string; type: 'success' | 'info'} | null>(null);
+  const prevRequestsRef = useRef<any[]>([]);
 
   const isAuthPage = pathname === '/login' || pathname === '/register';
 
@@ -197,6 +207,124 @@ export default function MainLayout({ children }: MainLayoutProps) {
     };
   }, [checkAuth]);
 
+  // Load notifications from localStorage on client-side mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('storyforge_notifications');
+      if (stored) {
+        try {
+          const parsed = JSON.parse(stored);
+          setNotifications(parsed);
+          setUnreadNotificationsCount(parsed.filter((n: any) => !n.read).length);
+        } catch (e) {
+          console.error('Failed to parse notifications:', e);
+        }
+      }
+    }
+  }, []);
+
+  const addNotification = useCallback((msg: string, type: 'success' | 'info') => {
+    const newNotif = {
+      id: Math.random().toString(36).substring(2, 9),
+      message: msg,
+      type: type,
+      read: false,
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setNotifications(prev => {
+      const updated = [newNotif, ...prev].slice(0, 50);
+      localStorage.setItem('storyforge_notifications', JSON.stringify(updated));
+      setUnreadNotificationsCount(updated.filter(n => !n.read).length);
+      return updated;
+    });
+  }, []);
+
+  const markAllNotifsRead = () => {
+    setNotifications(prev => {
+      const updated = prev.map(n => ({ ...n, read: true }));
+      localStorage.setItem('storyforge_notifications', JSON.stringify(updated));
+      setUnreadNotificationsCount(0);
+      return updated;
+    });
+  };
+
+  const clearAllNotifs = () => {
+    setNotifications([]);
+    localStorage.setItem('storyforge_notifications', JSON.stringify([]));
+    setUnreadNotificationsCount(0);
+  };
+
+  const markNotifRead = (id: string) => {
+    setNotifications(prev => {
+      const updated = prev.map(n => n.id === id ? { ...n, read: true } : n);
+      localStorage.setItem('storyforge_notifications', JSON.stringify(updated));
+      setUnreadNotificationsCount(updated.filter(n => !n.read).length);
+      return updated;
+    });
+  };
+
+  // Poll for pollen/choco request status updates
+  useEffect(() => {
+    if (!username || role === 'admin') {
+      prevRequestsRef.current = [];
+      return;
+    }
+
+    const pollPollenRequests = async () => {
+      try {
+        const token = localStorage.getItem('storyforge_token');
+        if (!token) return;
+        
+        const res = await fetch('/api/status/pollen/requests', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        
+        if (data.success && Array.isArray(data.requests)) {
+          const requests = data.requests;
+          
+          if (prevRequestsRef.current.length > 0) {
+            for (const req of requests) {
+              const prevReq = prevRequestsRef.current.find((r) => r.id === req.id);
+              // Notification triggers when request status transitions from pending/prompting to approved/denied
+              if (prevReq && (prevReq.status === 'pending' || prevReq.status === 'prompting') && prevReq.status !== req.status) {
+                if (req.status === 'approved') {
+                  const msg = `🎉 Your request for ${Math.round(req.amount)} Choco has been APPROVED!`;
+                  setActiveNotification({ message: msg, type: 'success' });
+                  addNotification(msg, 'success');
+                  window.dispatchEvent(new CustomEvent('pollen-updated'));
+                } else if (req.status === 'denied') {
+                  const msg = `❌ Your request for ${Math.round(req.amount)} Choco has been denied.`;
+                  setActiveNotification({ message: msg, type: 'info' });
+                  addNotification(msg, 'info');
+                }
+              }
+            }
+          }
+          prevRequestsRef.current = requests;
+        }
+      } catch (err) {
+        console.warn('Failed to poll pollen requests:', err);
+      }
+    };
+
+    pollPollenRequests();
+    const interval = setInterval(pollPollenRequests, 8000);
+    return () => clearInterval(interval);
+  }, [username, role, addNotification]);
+
+  // Auto-dismiss notification after 6 seconds
+  useEffect(() => {
+    if (!activeNotification) return;
+    const timer = setTimeout(() => {
+      setActiveNotification(null);
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [activeNotification]);
+
   // Sync collapsed state on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -268,6 +396,9 @@ export default function MainLayout({ children }: MainLayoutProps) {
     const handleOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
         setDropdownOpen(false);
+      }
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(e.target as Node)) {
+        setNotifDropdownOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutside);
@@ -614,6 +745,59 @@ export default function MainLayout({ children }: MainLayoutProps) {
                 {getThemeIcon()}
               </button>
 
+              {/* Notification Bell Dropdown (for non-admin users) */}
+              {username && role !== 'admin' && (
+                <div ref={notifDropdownRef} className={styles.notifWrapper}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNotifDropdownOpen((o) => !o);
+                      markAllNotifsRead();
+                    }}
+                    className={styles.notifBellBtn}
+                    title="Notifications"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                    </svg>
+                    {unreadNotificationsCount > 0 && (
+                      <span className={styles.notifBadge}>{unreadNotificationsCount}</span>
+                    )}
+                  </button>
+
+                  {notifDropdownOpen && (
+                    <div className={styles.notifDropdown}>
+                      <div className={styles.notifHeader}>
+                        <h3>Notifications</h3>
+                        {notifications.length > 0 && (
+                          <button onClick={clearAllNotifs} className={styles.clearAllBtn}>Clear All</button>
+                        )}
+                      </div>
+                      <div className={styles.notifList}>
+                        {notifications.length === 0 ? (
+                          <div className={styles.emptyNotifs}>No new notifications</div>
+                        ) : (
+                          notifications.map((notif) => (
+                            <div 
+                              key={notif.id} 
+                              className={`${styles.notifItem} ${notif.read ? styles.notifRead : styles.notifUnread}`}
+                              onClick={() => markNotifRead(notif.id)}
+                            >
+                              <div className={styles.notifDot} />
+                              <div className={styles.notifContent}>
+                                <p>{notif.message}</p>
+                                <span className={styles.notifTime}>{notif.time}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* User Avatar Dropdown */}
               {username && (
                 <div ref={dropdownRef} style={{ position: 'relative' }}>
@@ -691,6 +875,22 @@ export default function MainLayout({ children }: MainLayoutProps) {
               )}
             </div>
           </header>
+
+          {/* Toast Notification Banner */}
+          {activeNotification && (
+            <div className={`${styles.toastNotification} ${activeNotification.type === 'success' ? styles.toastSuccess : styles.toastInfo}`}>
+              <div className={styles.toastBody}>
+                {activeNotification.message}
+              </div>
+              <button 
+                type="button" 
+                className={styles.toastCloseBtn} 
+                onClick={() => setActiveNotification(null)}
+              >
+                &times;
+              </button>
+            </div>
+          )}
 
           {/* Nested Page Render */}
           {children}

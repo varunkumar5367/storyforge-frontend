@@ -121,6 +121,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     checkPollen();
+    window.addEventListener('pollen-updated', checkPollen);
+    return () => window.removeEventListener('pollen-updated', checkPollen);
   }, [checkPollen]);
 
   // ── Save handler ─────────────────────────────────────────────────────────

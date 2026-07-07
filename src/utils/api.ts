@@ -366,8 +366,8 @@ export async function getJobStatus(jobId: string): Promise<JobStatusResponse> {
 /**
  * Lists all historical jobs
  */
-export async function listAllJobs(limit = 20): Promise<JobListResponse> {
-  const response = await fetch(`${BASE_URL}/api/status/?limit=${limit}`, {
+export async function listAllJobs(limit = 20, allUsers = false): Promise<JobListResponse> {
+  const response = await fetch(`${BASE_URL}/api/status/?limit=${limit}&all_users=${allUsers}`, {
     headers: getAuthHeaders(),
   });
   if (!response.ok) {

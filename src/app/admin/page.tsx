@@ -845,6 +845,25 @@ export default function AdminPage() {
                                           </td>
                                           <td style={{ padding: '12px 16px', fontWeight: 600 }}>{job.progress_percent}%</td>
                                           <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                                            {job.status === 'completed' && (
+                                              <button
+                                                onClick={() => router.push(`/accuracy?job_id=${job.job_id}`)}
+                                                style={{
+                                                  padding: '4px 8px',
+                                                  borderRadius: '4px',
+                                                  backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                                  border: '1px solid rgba(16, 185, 129, 0.2)',
+                                                  color: 'var(--accent-green)',
+                                                  cursor: 'pointer',
+                                                  fontSize: '11px',
+                                                  fontWeight: 600,
+                                                  transition: 'var(--transition-fast)',
+                                                  marginRight: '8px'
+                                                }}
+                                              >
+                                                📊 Accuracy Report
+                                              </button>
+                                            )}
                                             <button
                                               onClick={() => handleDeleteJob(job.job_id)}
                                               style={{
@@ -1163,7 +1182,8 @@ export default function AdminPage() {
                           <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>User</th>
                           <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Duration</th>
                           <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Memory</th>
-                          <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'right' }}>Status</th>
+                          <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600 }}>Status</th>
+                          <th style={{ padding: '8px 12px', color: 'var(--text-secondary)', fontWeight: 600, textAlign: 'right' }}>Report</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1177,7 +1197,7 @@ export default function AdminPage() {
                             <td style={{ padding: '12px 12px', color: 'var(--text-primary)' }}>{r.username || '—'}</td>
                             <td style={{ padding: '12px 12px', color: 'var(--text-secondary)' }}>{r.total_duration.toFixed(1)}s</td>
                             <td style={{ padding: '12px 12px', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{r.peak_memory_mb > 0 ? `${r.peak_memory_mb.toFixed(0)}MB` : '—'}</td>
-                            <td style={{ padding: '12px 12px', textAlign: 'right' }}>
+                            <td style={{ padding: '12px 12px' }}>
                               <span style={{
                                 padding: '2px 6px',
                                 borderRadius: '4px',
@@ -1189,11 +1209,26 @@ export default function AdminPage() {
                                 {r.status}
                               </span>
                             </td>
+                            <td style={{ padding: '12px 12px', textAlign: 'right' }}>
+                              {r.status === 'completed' && (
+                                <a
+                                  href={`/accuracy?job_id=${r.job_id}`}
+                                  style={{
+                                    color: 'var(--accent-green)',
+                                    fontWeight: 600,
+                                    textDecoration: 'none',
+                                    fontSize: '12px'
+                                  }}
+                                >
+                                  📊 Report
+                                </a>
+                              )}
+                            </td>
                           </tr>
                         ))}
                         {analytics.renders.recent.length === 0 && (
                           <tr>
-                            <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                            <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                               No render runs recorded yet.
                             </td>
                           </tr>

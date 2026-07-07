@@ -45,6 +45,7 @@ const STYLES = [
   { id: 'scifi', label: 'Sci-Fi Space', desc: 'Galactic nebula backdrops, chrome surfaces, cosmic scale', icon: '🚀' },
   { id: 'vintage', label: 'Vintage Film', desc: 'Sepia grain, film burn, 1940s old-school photograph', icon: '📷' },
   { id: 'noir', label: 'Film Noir', desc: 'High-contrast monochrome, moody shadows, detective drama', icon: '🕵️' },
+  { id: 'manhwa', label: 'Manhwa / Webtoon', desc: 'Modern webtoon style, vibrant digital painting', icon: '📖' },
 ];
 
 const STYLE_PROMPTS: Record<string, string> = {
@@ -60,7 +61,9 @@ const STYLE_PROMPTS: Record<string, string> = {
   scifi: 'sci-fi space setting, galactic nebula backdrop, chrome metallic surfaces, bioluminescent glow, cinematic cosmic scale',
   vintage: 'sepia toned aged photograph, film grain texture, 1940s old-school style, vignette edges, nostalgic warm light',
   noir: 'high contrast monochrome black and white, moody dramatic shadows, venetian blind light streaks, classic film noir detective drama',
+  manhwa: 'modern manhwa webtoon style, vibrant digital painting, colorful clean webtoon illustration, crisp digital line art',
 };
+
 
 const RATIOS = [
   { id: '16:9', label: 'Landscape 16:9', sub: 'YouTube / Widescreen', w: 14, h: 8 },
@@ -214,8 +217,9 @@ export default function StoryUpload({ onUploadSuccess }: StoryUploadProps) {
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchPollen();
+    window.addEventListener('pollen-updated', fetchPollen);
+    return () => window.removeEventListener('pollen-updated', fetchPollen);
   }, [fetchPollen]);
 
   // Read role from localStorage
