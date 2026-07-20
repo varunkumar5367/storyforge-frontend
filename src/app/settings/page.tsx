@@ -70,6 +70,7 @@ export default function SettingsPage() {
   const [adSeconds, setAdSeconds] = useState(15);
   const [claimingReward, setClaimingReward] = useState(false);
   const [claimSuccessMsg, setClaimSuccessMsg] = useState<string | null>(null);
+  const [claimError, setClaimError] = useState<string | null>(null);
 
   // ── UI state ─────────────────────────────────────────────────────────────
   const [savedSuccess, setSavedSuccess] = useState(false);
@@ -135,6 +136,7 @@ export default function SettingsPage() {
   const handleWatchAd = () => {
     setAdSeconds(15);
     setClaimSuccessMsg(null);
+    setClaimError(null);
     setClaimingReward(false);
     setShowAdModal(true);
   };
@@ -149,13 +151,14 @@ export default function SettingsPage() {
     } else {
       const claim = async () => {
         setClaimingReward(true);
+        setClaimError(null);
         try {
           const res = await claimAdRewardCredits();
           setClaimSuccessMsg(res.message || "Successfully claimed +5 Choco credits!");
           await checkPollen();
           window.dispatchEvent(new CustomEvent('pollen-updated'));
         } catch (err: any) {
-          alert(err.message || "Failed to claim ad reward credits.");
+          setClaimError(err.message || "Failed to claim ad reward credits.");
         } finally {
           setClaimingReward(false);
         }
@@ -484,34 +487,43 @@ export default function SettingsPage() {
             </div>
 
             {/* Status & Close button */}
-            <div style={{ minHeight: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ minHeight: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
               {claimingReward && (
                 <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
                   Adding 5 Choco credits to your account...
                 </p>
               )}
+              
               {claimSuccessMsg && (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                  <p style={{ color: 'var(--accent-green)', fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>
-                    {claimSuccessMsg}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setShowAdModal(false)}
-                    className={styles.quotaRefreshBtn}
-                    style={{
-                      padding: '8px 24px',
-                      backgroundColor: 'rgba(255,255,255,0.1)',
-                      border: '1px solid rgba(255,255,255,0.2)',
-                      color: 'white',
-                      cursor: 'pointer',
-                      borderRadius: 'var(--border-radius)',
-                      fontWeight: 600
-                    }}
-                  >
-                    Close
-                  </button>
-                </div>
+                <p style={{ color: 'var(--accent-green)', fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>
+                  {claimSuccessMsg}
+                </p>
+              )}
+
+              {claimError && (
+                <p style={{ color: 'var(--accent-red)', fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>
+                  ⚠️ {claimError}
+                </p>
+              )}
+
+              {adSeconds === 0 && !claimingReward && (
+                <button
+                  type="button"
+                  onClick={() => setShowAdModal(false)}
+                  className={styles.quotaRefreshBtn}
+                  style={{
+                    padding: '8px 24px',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    color: 'white',
+                    cursor: 'pointer',
+                    borderRadius: 'var(--border-radius)',
+                    fontWeight: 600,
+                    marginTop: '8px'
+                  }}
+                >
+                  Close
+                </button>
               )}
             </div>
           </div>
