@@ -694,6 +694,21 @@ export async function getUserPollenRequests(): Promise<{ success: boolean; reque
 }
 
 /**
+ * Claims ad-rewarded credits for the user
+ */
+export async function claimAdRewardCredits(): Promise<{ success: boolean; reward_amount: number; new_balance: number; message: string }> {
+  const response = await fetch(`${BASE_URL}/api/status/pollen/reward-ad`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.detail || 'Failed to claim ad reward credits.');
+  }
+  return response.json();
+}
+
+/**
  * Retrieves all pollen requests in the system (Admin only)
  */
 export async function getAllPollenRequests(): Promise<{ success: boolean; requests: PollenRequest[] }> {

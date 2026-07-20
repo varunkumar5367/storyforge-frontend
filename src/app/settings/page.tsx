@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { getPollenBalance, PollenBalanceResponse, BASE_URL } from '@/utils/api';
+import { getPollenBalance, PollenBalanceResponse, BASE_URL, claimAdRewardCredits } from '@/utils/api';
 import styles from './Settings.module.css';
 
 const MAX_QUOTA = 20;
@@ -65,6 +65,12 @@ export default function SettingsPage() {
   const [resetTarget] = useState<Date>(getNextHourReset);
   const [userPollenBalance, setUserPollenBalance] = useState(20);
 
+  // ── Ad Watching States ──────────────────────────────────────────────────
+  const [showAdModal, setShowAdModal] = useState(false);
+  const [adSeconds, setAdSeconds] = useState(15);
+  const [claimingReward, setClaimingReward] = useState(false);
+  const [claimSuccessMsg, setClaimSuccessMsg] = useState<string | null>(null);
+
   // ── UI state ─────────────────────────────────────────────────────────────
   const [savedSuccess, setSavedSuccess] = useState(false);
   const [saveWarning, setSaveWarning] = useState<string | null>(null);
@@ -124,6 +130,39 @@ export default function SettingsPage() {
     window.addEventListener('pollen-updated', checkPollen);
     return () => window.removeEventListener('pollen-updated', checkPollen);
   }, [checkPollen]);
+
+  // ── Ad Watching Logic ───────────────────────────────────────────────────
+  const handleWatchAd = () => {
+    setAdSeconds(15);
+    setClaimSuccessMsg(null);
+    setClaimingReward(false);
+    setShowAdModal(true);
+  };
+
+  useEffect(() => {
+    if (!showAdModal) return;
+    if (adSeconds > 0) {
+      const timer = setInterval(() => {
+        setAdSeconds((prev) => prev - 1);
+      }, 1000);
+      return () => clearInterval(timer);
+    } else {
+      const claim = async () => {
+        setClaimingReward(true);
+        try {
+          const res = await claimAdRewardCredits();
+          setClaimSuccessMsg(res.message || "Successfully claimed +5 Choco credits!");
+          await checkPollen();
+          window.dispatchEvent(new CustomEvent('pollen-updated'));
+        } catch (err: any) {
+          alert(err.message || "Failed to claim ad reward credits.");
+        } finally {
+          setClaimingReward(false);
+        }
+      };
+      claim();
+    }
+  }, [showAdModal, adSeconds, checkPollen]);
 
   // ── Save handler ─────────────────────────────────────────────────────────
   const handleSave = async (e: React.FormEvent) => {
@@ -298,6 +337,40 @@ export default function SettingsPage() {
                   Contact your administrator to refresh quota
                 </p>
               )}
+
+              {/* Watch Ad section for non-admins */}
+              {!isAdmin && (
+                <div style={{
+                  marginTop: '16px',
+                  paddingTop: '16px',
+                  borderTop: '1px dashed rgba(255,255,255,0.1)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>EARN EXTRA CREDITS</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--accent-purple)', fontWeight: 600 }}>+5 Choco / Ad</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleWatchAd}
+                    className={styles.quotaRefreshBtn}
+                    style={{
+                      backgroundColor: 'var(--accent-purple)',
+                      border: 'none',
+                      color: 'white',
+                      cursor: 'pointer',
+                      opacity: 1,
+                      backgroundImage: 'var(--gradient-primary)',
+                      boxShadow: 'var(--glow-purple)',
+                      fontWeight: 700
+                    }}
+                  >
+                    📺 Watch Ad (+5 Choco)
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -317,6 +390,133 @@ export default function SettingsPage() {
           )}
         </div>
       </form>
+
+      {/* ── Rewarded Ad Modal Overlay ────────────────────────────────────── */}
+      {showAdModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          backdropFilter: 'blur(10px)',
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}>
+          <div className="glass" style={{
+            maxWidth: '500px',
+            width: '100%',
+            backgroundColor: 'rgba(20,20,25,0.9)',
+            border: '1px solid rgba(255,255,255,0.1)',
+            borderRadius: 'var(--border-radius-lg)',
+            padding: '30px',
+            textAlign: 'center',
+            boxShadow: 'var(--shadow-lg), var(--glow-purple)'
+          }}>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, marginBottom: '16px', background: 'var(--gradient-cyber)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              Sponsored Advertisement
+            </h3>
+            
+            {/* Simulated Video Player */}
+            <div style={{
+              width: '100%',
+              aspectRatio: '16/9',
+              backgroundColor: '#000',
+              borderRadius: '8px',
+              position: 'relative',
+              overflow: 'hidden',
+              marginBottom: '20px',
+              border: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px'
+            }}>
+              {adSeconds > 0 ? (
+                <>
+                  <div className="animate-spin-fast" style={{ width: '32px', height: '32px', border: '3px solid transparent', borderTopColor: 'var(--accent-purple)', borderRadius: '50%' }} />
+                  <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                    Playing sponsor video...
+                  </p>
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '12px',
+                    right: '12px',
+                    backgroundColor: 'rgba(0,0,0,0.7)',
+                    padding: '4px 10px',
+                    borderRadius: '4px',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    color: 'white',
+                    border: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    {adSeconds}s remaining
+                  </div>
+                </>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '20px' }}>
+                  <div style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(16,185,129,0.1)',
+                    color: 'var(--accent-green)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    marginBottom: '12px',
+                    border: '1px solid rgba(16,185,129,0.2)'
+                  }}>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
+                      <polyline points="20 6 9 17 4 12"/>
+                    </svg>
+                  </div>
+                  <p style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-primary)' }}>
+                    Ad Completed!
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Status & Close button */}
+            <div style={{ minHeight: '60px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              {claimingReward && (
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0 }}>
+                  Adding 5 Choco credits to your account...
+                </p>
+              )}
+              {claimSuccessMsg && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                  <p style={{ color: 'var(--accent-green)', fontWeight: 600, fontSize: '0.95rem', margin: 0 }}>
+                    {claimSuccessMsg}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdModal(false)}
+                    className={styles.quotaRefreshBtn}
+                    style={{
+                      padding: '8px 24px',
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      border: '1px solid rgba(255,255,255,0.2)',
+                      color: 'white',
+                      cursor: 'pointer',
+                      borderRadius: 'var(--border-radius)',
+                      fontWeight: 600
+                    }}
+                  >
+                    Close
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
