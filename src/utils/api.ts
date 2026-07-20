@@ -321,11 +321,12 @@ export function getAssetUrl(rawPath: string | null): string {
 /**
  * Uploads a text file to initiate the story conversion pipeline
  */
-export async function uploadStoryFile(file: File, voice = 'en-US-JennyNeural', imageModel = 'ByteDance/SDXL-Lightning-4step'): Promise<{ job_id: string; status: string; message: string }> {
+export async function uploadStoryFile(file: File, voice = 'en-US-JennyNeural', imageModel = 'ByteDance/SDXL-Lightning-4step', inferenceSteps = 15): Promise<{ job_id: string; status: string; message: string }> {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('voice', voice);
   formData.append('image_model', imageModel);
+  formData.append('inference_steps', String(inferenceSteps));
 
   const response = await fetch(`${BASE_URL}/api/analyze/upload`, {
     method: 'POST',
@@ -344,9 +345,9 @@ export async function uploadStoryFile(file: File, voice = 'en-US-JennyNeural', i
 /**
  * Creates and uploads a virtual text file from raw story text
  */
-export async function uploadStoryText(text: string, filename = 'story.txt', voice = 'en-US-JennyNeural', imageModel = 'ByteDance/SDXL-Lightning-4step'): Promise<{ job_id: string; status: string; message: string }> {
+export async function uploadStoryText(text: string, filename = 'story.txt', voice = 'en-US-JennyNeural', imageModel = 'ByteDance/SDXL-Lightning-4step', inferenceSteps = 15): Promise<{ job_id: string; status: string; message: string }> {
   const file = new File([text], filename, { type: 'text/plain' });
-  return uploadStoryFile(file, voice, imageModel);
+  return uploadStoryFile(file, voice, imageModel, inferenceSteps);
 }
 
 /**

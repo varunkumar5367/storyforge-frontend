@@ -78,9 +78,9 @@ const SUBTITLE_STYLES = [
 ];
 
 const QUALITY_PRESETS = [
-  { id: 'normal', label: 'Normal (Fast)', desc: 'Ultra-fast SDXL generation (~2s / scene)', icon: '⚡', chocoPerScene: 1 },
-  { id: 'high', label: 'High Quality', desc: 'High realism FLUX-Schnell (~20s / scene)', icon: '✨', chocoPerScene: 2 },
-  { id: 'very_high', label: 'Very High Quality', desc: 'Absolute highest detail FLUX-Dev (~75s / scene)', icon: '🔮', chocoPerScene: 3 },
+  { id: 'normal', label: 'Normal (Fast)', desc: 'SDXL-Lightning 4 steps — ultra-fast drafts (~15–25s / scene)', icon: '⚡', chocoPerScene: 1, inferenceSteps: 4, adminOnly: false },
+  { id: 'high', label: 'High Quality', desc: 'FLUX-Schnell 4 steps — sharp, fast (~10s / scene)', icon: '✨', chocoPerScene: 2, inferenceSteps: 4, adminOnly: false },
+  { id: 'very_high', label: 'Very High Quality', desc: 'FLUX-Dev 28 steps — maximum accuracy & detail (~60–90s / scene)', icon: '🔮', chocoPerScene: 3, inferenceSteps: 28, adminOnly: false },
 ];
 
 const QUALITY_MODELS = {
@@ -90,6 +90,7 @@ const QUALITY_MODELS = {
 };
 
 const QUALITY_CHOCO_RATE: Record<string, number> = { normal: 1, high: 2, very_high: 3 };
+const QUALITY_INFERENCE_STEPS: Record<string, number> = { normal: 4, high: 4, very_high: 28 };
 
 interface StoryUploadProps {
   onUploadSuccess: (jobId: string) => void;
@@ -363,7 +364,8 @@ Subtitles style: "${subtitleStyle}"
 
       const name = `${storyTitle.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.txt`;
       const modelId = QUALITY_MODELS[selectedQuality as keyof typeof QUALITY_MODELS] || QUALITY_MODELS.normal;
-      const res = await uploadStoryText(finalScript, name, selectedVoice, modelId);
+      const inferenceSteps = QUALITY_INFERENCE_STEPS[selectedQuality] ?? 15;
+      const res = await uploadStoryText(finalScript, name, selectedVoice, modelId, inferenceSteps);
 
       // Reset form states
       handleClearForm();
@@ -623,13 +625,21 @@ Subtitles style: "${subtitleStyle}"
             <div className={styles.inputGroup}>
               <label className={styles.inputLabel}>Image Generation Quality</label>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '12px' }}>
-                {QUALITY_PRESETS.map((q) => (
+                {QUALITY_PRESETS.filter(q => !q.adminOnly || isAdmin).map((q) => (
                   <div
                     key={q.id}
                     onClick={() => setSelectedQuality(q.id)}
                     className={`${styles.presetCard} ${selectedQuality === q.id ? styles.presetCardActive : ''}`}
-                    style={{ minHeight: '80px', padding: '12px 16px' }}
+                    style={{ minHeight: '80px', padding: '12px 16px', position: 'relative' }}
                   >
+                    {q.adminOnly && (
+                      <span style={{
+                        position: 'absolute', top: '6px', right: '8px',
+                        fontSize: '9px', fontWeight: 700, color: 'var(--accent-purple)',
+                        background: 'rgba(139,92,246,0.15)', borderRadius: '4px',
+                        padding: '2px 5px', letterSpacing: '0.5px', textTransform: 'uppercase',
+                      }}>Admin Only</span>
+                    )}
                     <span className={styles.presetIcon}>{q.icon}</span>
                     <span className={styles.presetTitle} style={{ fontSize: '14px', fontWeight: 700 }}>{q.label}</span>
                     <span className={styles.presetDesc} style={{ fontSize: '11px', marginTop: '4px' }}>{q.desc}</span>
